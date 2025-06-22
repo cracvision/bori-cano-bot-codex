@@ -20,6 +20,14 @@ let hasUserInteractedInitially = false;
 let currentSessionState = { threadId: null };
 let pollingInterval = null; // Para controlar el ciclo de polling
 
+function prepareTextForTTS(text) {
+    if (typeof text !== 'string') return '';
+    return text
+        .replace(/https?:\/\/\S+/g, '')
+        .replace(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/g, '')
+        .trim();
+}
+
 // --- MANEJO DE LA PÁGINA ---
 $w.onReady(() => {
     console.log("🔥 BoricanoEN page ready. Setting up iFrame communication.");
@@ -75,7 +83,8 @@ $w.onReady(() => {
                     console.log("🔊 EN: User clicked speaker icon. Requesting audio for:", messageFromIframe.text);
                     handleUserActivity(iFrameElement);
                     try {
-                        const audioData = await generateAudio(messageFromIframe.text, messageFromIframe.language);
+                        const ttsText = prepareTextForTTS(messageFromIframe.text);
+                        const audioData = await generateAudio(ttsText, messageFromIframe.language);
                         if (audioData && !audioData.error) {
                             iFrameElement.postMessage({
                                 type: 'audioResponse',

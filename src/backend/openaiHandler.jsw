@@ -149,13 +149,37 @@ export async function getAssistantRunResult(threadId, runId, language = 'en') {
             }
 
             botResponseText = removeCitations(botResponseText);
-            
+
+            // --- Generate Google Maps link if coordinates or place recommendation detected ---
+            let mapsLink = '';
+            let coordMatch = botResponseText.match(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/);
+            if (coordMatch) {
+                const lat = coordMatch[1];
+                const lng = coordMatch[2];
+                mapsLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+            } else {
+                const placeRegex = /(?:recomiendo|recomendar|visita|visit|check out|ve a|dir[íi]gete a)\s+([^\.\n]+)/i;
+                const placeMatch = botResponseText.match(placeRegex);
+                if (placeMatch) {
+                    const place = placeMatch[1].trim();
+                    if (place) {
+                        mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`;
+                    }
+                }
+            }
+
+            if (mapsLink) {
+                botResponseText += `\n\nMapa: ${mapsLink}`;
+            }
+
             let languageForTTS = botResponseText.toLowerCase().includes("wepa") || botResponseText.match(/[áéíóúñ¿¡]/) ? 'es' : 'en';
+
+            const cleanedForTTS = cleanTextForTTS(botResponseText.replace(/https?:\/\/\S+/g, '').replace(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/g, ''));
 
             return {
                 status: 'completed',
                 botResponseText: botResponseText,
-                cleanedTextForTTS: cleanTextForTTS(botResponseText),
+                cleanedTextForTTS: cleanedForTTS,
                 languageForTTS: languageForTTS
             };
         } else if (['failed', 'cancelled', 'expired'].includes(statusData.status)) {
