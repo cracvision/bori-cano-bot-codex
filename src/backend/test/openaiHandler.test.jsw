@@ -1,0 +1,70 @@
+import assert from 'assert';
+import { readFile } from 'fs/promises';
+import vm from 'vm';
+
+let code = await readFile(new URL('../openaiHandler.jsw', import.meta.url), 'utf8');
+code = code.replace(/import\s+\{[^}]+\}\s+from\s+'wix-fetch';?\n/, '')
+           .replace(/import\s+\{[^}]+\}\s+from\s+'wix-secrets-backend';?\n/, '')
+           .replace(/export\s+(async\s+function)/g, '$1')
+           .replace(/export\s+function/g, 'function');
+code = 'let fetch; let getSecret;\n' + code;
+code += '\nmodule.exports = { __setTestDependencies, startAssistantRun, getAssistantRunResult };';
+const sandbox = { module: { exports: {} }, exports: {} };
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox, { filename: 'openaiHandler.jsw' });
+const { __setTestDependencies, startAssistantRun, getAssistantRunResult } = sandbox.module.exports;
+
+// startAssistantRun success
+const mockFetchSuccess = async (url) => {
+  if (url.endsWith('/threads')) {
+    return { ok: true, json: async () => ({ id: 'thread123' }) };
+  }
+  if (url.includes('/messages')) {
+    return { ok: true, json: async () => ({}) };
+  }
+  if (url.includes('/runs')) {
+    return { ok: true, json: async () => ({ id: 'run123' }) };
+  }
+  throw new Error('unexpected');
+};
+__setTestDependencies({ fetch: mockFetchSuccess, getSecret: async () => 'KEY' });
+const res = await startAssistantRun('hello', null);
+assert.strictEqual(res.threadId, 'thread123');
+assert.strictEqual(res.runId, 'run123');
+
+// startAssistantRun failure
+__setTestDependencies({ fetch: async () => { throw new Error('fail'); }, getSecret: async () => 'KEY' });
+let threw = false;
+try {
+  await startAssistantRun('hello', null);
+} catch (e) {
+  threw = true;
+}
+assert.strictEqual(threw, true);
+
+// getAssistantRunResult success
+const mockFetchGR = async (url) => {
+  if (url.includes('/runs/')) {
+    return { ok: true, json: async () => ({ status: 'completed' }) };
+  }
+  if (url.includes('/messages')) {
+    return { ok: true, json: async () => ({ data: [{ content: [{ type: 'text', text: { value: 'Hola' } }] }] }) };
+  }
+  throw new Error('unexpected');
+};
+__setTestDependencies({ fetch: mockFetchGR, getSecret: async () => 'KEY' });
+const rr = await getAssistantRunResult('thread123', 'run123');
+assert.strictEqual(rr.status, 'completed');
+assert.strictEqual(rr.botResponseText, 'Hola');
+
+// getAssistantRunResult failure
+__setTestDependencies({ fetch: async () => { throw new Error('fail'); }, getSecret: async () => 'KEY' });
+let threw2 = false;
+try {
+  await getAssistantRunResult('t', 'r');
+} catch (e) {
+  threw2 = true;
+}
+assert.strictEqual(threw2, true);
+
+console.log('Tests passed');
