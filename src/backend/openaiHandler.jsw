@@ -3,6 +3,16 @@
 import { fetch } from 'wix-fetch';
 import { getSecret } from 'wix-secrets-backend';
 
+// Allow dependency injection for unit tests.
+let fetchFn = fetch;
+let getSecretFn = getSecret;
+
+export function __setTestDependencies({ fetch, getSecret } = {}) {
+    if (fetch) fetchFn = fetch;
+    if (getSecret) getSecretFn = getSecret;
+    openAIApiKey = null; // reset cache for tests
+}
+
 // --- Constantes ---
 const OPENAI_API_BASE_URL = "https://api.openai.com/v1";
 const ASSISTANT_ID = "asst_CplVyaMXTSyXkNuqhmQJeDfh";
@@ -10,11 +20,12 @@ const ASSISTANT_ID = "asst_CplVyaMXTSyXkNuqhmQJeDfh";
 // --- Caché de la API Key ---
 let openAIApiKey;
 
+// Retrieve and cache the OpenAI secret on first use
 async function initializeApiKey() {
     if (openAIApiKey) return openAIApiKey;
     try {
         console.log("🧠 openaiHandler.jsw: Obteniendo la API Key de OpenAI...");
-        openAIApiKey = await getSecret("openai_api_key");
+        openAIApiKey = await getSecretFn("openai_api_key");
         if (!openAIApiKey) console.error("💥 openaiHandler.jsw: API Key de OpenAI no encontrada.");
     } catch (error) {
         console.error("💥 openaiHandler.jsw: Error crítico al obtener 'openai_api_key':", error);
@@ -24,10 +35,11 @@ async function initializeApiKey() {
 }
 
 // --- Función de Reintentos Robusta ---
+// Retries fetch calls with exponential backoff and jitter
 async function fetchWithRetry(url, options, retries = 5, initialDelay = 500) {
     for (let i = 0; i < retries; i++) {
         try {
-            const response = await fetch(url, options);
+            const response = await fetchFn(url, options);
             if (response.status >= 500) {
                 throw new Error(`Error del servidor (Status ${response.status}), reintentando...`);
             }
@@ -44,6 +56,7 @@ async function fetchWithRetry(url, options, retries = 5, initialDelay = 500) {
 }
 
 // --- Funciones Auxiliares de Texto ---
+// Clean response text for TTS and remove citation markers
 function cleanTextForTTS(text) {
     if (typeof text !== 'string') return '';
     return text.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').replace(/\s+/g, ' ').trim();
@@ -63,6 +76,7 @@ export async function startAssistantRun(userMessage, currentThreadId) {
     const apiKey = await initializeApiKey();
     if (!apiKey) return { error: "OpenAI API Key not configured." };
 
+    // Common headers for OpenAI Assistant API
     const headers = {
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
@@ -98,13 +112,14 @@ export async function startAssistantRun(userMessage, currentThreadId) {
         return { threadId: threadIdToUse, runId: runData.id };
 
     } catch (error) {
-        console.error("💥 Error en startAssistantRun:", error.message);
-        return { error: error.message };
+        console.error(error);
+        throw error;
     }
 }
 
 // --- FUNCIÓN #2: Verificar el Estado y Obtener el Resultado del Run ---
 export async function getAssistantRunResult(threadId, runId, language = 'en') {
+    // Polls the run status and fetches the last assistant message when done.
     const apiKey = await initializeApiKey();
     if (!apiKey) return { error: "OpenAI API Key not configured." };
 
@@ -116,13 +131,13 @@ export async function getAssistantRunResult(threadId, runId, language = 'en') {
 
     try {
         // Usamos fetch normal aquí porque el bucle de polling ya está en el frontend
-        const statusResponse = await fetch(`${OPENAI_API_BASE_URL}/threads/${threadId}/runs/${runId}`, { headers });
+        const statusResponse = await fetchFn(`${OPENAI_API_BASE_URL}/threads/${threadId}/runs/${runId}`, { headers });
         if (!statusResponse.ok) throw new Error(`Error obteniendo estado del run: ${await statusResponse.text()}`);
         
         const statusData = await statusResponse.json();
         
         if (statusData.status === 'completed') {
-            const messagesResponse = await fetch(`${OPENAI_API_BASE_URL}/threads/${threadId}/messages?order=desc&limit=1`, { headers });
+            const messagesResponse = await fetchFn(`${OPENAI_API_BASE_URL}/threads/${threadId}/messages?order=desc&limit=1`, { headers });
             if (!messagesResponse.ok) throw new Error(`Error listando mensajes: ${await messagesResponse.text()}`);
             
             const messagesData = await messagesResponse.json();
@@ -151,17 +166,7 @@ export async function getAssistantRunResult(threadId, runId, language = 'en') {
         }
 
     } catch (error) {
-        console.error("💥 Error en getAssistantRunResult:", error.message);
-        const errorMessage = language === 'es' 
-            ? "¡Cuidáou, mi pana! Parece que hubo un problemita de conexión. Intenta de nuevo, ¿vale? 🦤"
-            : "Oops, my friend! It seems there was a little connection hiccup. Please try again, okay? 🦤";
-            
-        return {
-            status: 'failed',
-            error: error.message || "Unknown error",
-            botResponseText: errorMessage,
-            cleanedTextForTTS: cleanTextForTTS(errorMessage),
-            languageForTTS: language
-        };
+        console.error(error);
+        throw error;
     }
 }
