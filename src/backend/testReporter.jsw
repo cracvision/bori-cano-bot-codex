@@ -1,0 +1,51 @@
+import { enviarEmail } from 'email';
+
+export async function sendTestReport(testerName, testerEmail, results) {
+    console.log("📬 Preparing to send test report email...");
+
+    // Formatear resultados como tabla HTML
+    let htmlContent = `
+        <h2>Borí Cano Test Report</h2>
+        <p><strong>Tester Name:</strong> ${testerName}</p>
+        <p><strong>Tester Email:</strong> ${testerEmail}</p>
+        <h3>Test Results</h3>
+    `;
+
+    // Agrupar por fase
+    const phases = [...new Set(results.map(r => r.phase))];
+    phases.forEach(phase => {
+        htmlContent += `
+            <h4>${phase}</h4>
+            <table border="1" style="border-collapse: collapse; width: 100%; margin-bottom: 20px;">
+                <tr>
+                    <th style="padding: 8px; text-align: left;">ID</th>
+                    <th style="padding: 8px; text-align: left;">Query</th>
+                    <th style="padding: 8px; text-align: left;">Response</th>
+                </tr>
+        `;
+        results.filter(r => r.phase === phase).forEach(result => {
+            htmlContent += `
+                <tr>
+                    <td style="padding: 8px;">${result.id}</td>
+                    <td style="padding: 8px;">${result.query}</td>
+                    <td style="padding: 8px;">${result.response}</td>
+                </tr>
+            `;
+        });
+        htmlContent += `</table>`;
+    });
+
+    // Formatear para enviarEmail
+    const emailData = {
+        tipo: 'testReport',
+        mensaje: htmlContent
+    };
+
+    try {
+        await enviarEmail([emailData]);
+        console.log("✅ Test report successfully emailed.");
+    } catch (error) {
+        console.error("❌ Error sending test report email:", error);
+        throw error;
+    }
+}
