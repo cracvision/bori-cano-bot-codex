@@ -310,8 +310,8 @@ Reglas Adicionales y Notas Importantes (Consolidado/Refinado)
 
 ¡Disfruta tu estancia en Vista Pelicano! 🌊🏝️`;
 
-import { enviarEmailAlHuesped, enviarEmail } from 'backend/email';
-import { sendMessageToOpenAI } from 'backend/openaiHandler';
+import { enviarEmailAlHuesped, enviarEmail } from 'backend/email.jsw';
+import { sendMessageToOpenAI } from 'backend/openaiHandler.jsw';
 
 let temporizadorAdvertencia;
 let temporizadorCierre;
