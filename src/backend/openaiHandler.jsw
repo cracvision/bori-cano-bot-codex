@@ -118,7 +118,7 @@ export async function startAssistantRun(userMessage, currentThreadId) {
 }
 
 // --- FUNCIÓN #2: Verificar el Estado y Obtener el Resultado del Run ---
-export async function getAssistantRunResult(threadId, runId, language = 'en') {
+export async function getAssistantRunResult(threadId, runId, language = 'en', sessionState = {}) {
     // Polls the run status and fetches the last assistant message when done.
     const apiKey = await initializeApiKey();
     if (!apiKey) return { error: "OpenAI API Key not configured." };
@@ -169,7 +169,13 @@ export async function getAssistantRunResult(threadId, runId, language = 'en') {
             }
 
             if (mapsLink) {
-                botResponseText += `\n\nMapa: ${mapsLink}`;
+                if (sessionState.lastOfferedLink !== mapsLink) {
+                    botResponseText += `\n\nWould you like the Google Maps link?`;
+                    sessionState.awaitingMapConfirmation = mapsLink;
+                    sessionState.lastOfferedLink = mapsLink;
+                }
+            } else {
+                sessionState.awaitingMapConfirmation = null;
             }
 
             let languageForTTS = botResponseText.toLowerCase().includes("wepa") || botResponseText.match(/[áéíóúñ¿¡]/) ? 'es' : 'en';
@@ -180,7 +186,8 @@ export async function getAssistantRunResult(threadId, runId, language = 'en') {
                 status: 'completed',
                 botResponseText: botResponseText,
                 cleanedTextForTTS: cleanedForTTS,
-                languageForTTS: languageForTTS
+                languageForTTS: languageForTTS,
+                awaitingMapConfirmation: sessionState.awaitingMapConfirmation || null
             };
         } else if (['failed', 'cancelled', 'expired'].includes(statusData.status)) {
              console.error(`💥 Run fallido con estado: ${statusData.status}`);

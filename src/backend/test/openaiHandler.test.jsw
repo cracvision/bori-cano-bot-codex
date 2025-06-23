@@ -53,7 +53,7 @@ const mockFetchGR = async (url) => {
   throw new Error('unexpected');
 };
 __setTestDependencies({ fetch: mockFetchGR, getSecret: async () => 'KEY' });
-const rr = await getAssistantRunResult('thread123', 'run123');
+const rr = await getAssistantRunResult('thread123', 'run123', 'en', {});
 assert.strictEqual(rr.status, 'completed');
 assert.strictEqual(rr.botResponseText, 'Hola');
 assert.strictEqual(rr.cleanedTextForTTS, 'Hola');
@@ -69,17 +69,18 @@ const mockFetchCoord = async (url) => {
   throw new Error('unexpected');
 };
 __setTestDependencies({ fetch: mockFetchCoord, getSecret: async () => 'KEY' });
-const rrCoord = await getAssistantRunResult('t1', 'r1');
+const rrCoord = await getAssistantRunResult('t1', 'r1', 'en', {});
 assert.strictEqual(rrCoord.status, 'completed');
-assert.ok(rrCoord.botResponseText.includes('Mapa: https://www.google.com/maps/search/'));
+assert.ok(rrCoord.botResponseText.includes('Would you like the Google Maps link?'));
+assert.ok(rrCoord.awaitingMapConfirmation.startsWith('https://www.google.com/maps/search/'));
 assert.ok(!rrCoord.cleanedTextForTTS.includes('18.3'));
-assert.ok(!rrCoord.cleanedTextForTTS.includes('maps')); 
+assert.ok(!rrCoord.cleanedTextForTTS.includes('maps'));
 
 // getAssistantRunResult failure
 __setTestDependencies({ fetch: async () => { throw new Error('fail'); }, getSecret: async () => 'KEY' });
 let threw2 = false;
 try {
-  await getAssistantRunResult('t', 'r');
+  await getAssistantRunResult('t', 'r', 'en', {});
 } catch (e) {
   threw2 = true;
 }
