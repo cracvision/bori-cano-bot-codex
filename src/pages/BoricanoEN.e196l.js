@@ -130,7 +130,7 @@ async function processUserChatMessage(userMessage, iFrameElement) {
 
     if (currentSessionState.awaitingMapConfirmation && isMapConfirmation(userMessage)) {
         const link = currentSessionState.awaitingMapConfirmation;
-        const linkMsg = `\ud83d\udccd Here it is: ${link}`;
+        const linkMsg = `\ud83d\udccd <a href="${link}" target="_blank" rel="noopener">Click here for map</a>`;
         currentSessionState.awaitingMapConfirmation = null;
         currentSessionState.lastMapLink = link;
         lastBotResponse = linkMsg;

@@ -180,7 +180,7 @@ export async function getAssistantRunResult(threadId, runId, language = 'en', se
                 const lastLink = sessionState.lastOfferedLink || sessionState.lastMapLink;
                 if (sessionState.includeMapLink && sessionState.awaitingMapConfirmation === mapsLink) {
             console.log("🌐 openaiHandler: including maps link in response");
-                    botResponseText += `\n\n\ud83d\udccd ${mapsLink}`;
+                    botResponseText += `\n\n\ud83d\udccd <a href="${mapsLink}" target="_blank" rel="noopener">Click here for map</a>`;
                     sessionState.lastOfferedLink = mapsLink;
                     sessionState.awaitingMapConfirmation = null;
                     sessionState.includeMapLink = false;
