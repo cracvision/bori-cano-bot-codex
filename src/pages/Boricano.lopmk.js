@@ -317,6 +317,7 @@ let temporizadorAdvertencia;
 let temporizadorCierre;
 let ultimaRespuesta = "";
 let transcripcion = []; // 💾 Registro completo de la conversación
+let ultimoEnlace = "";
 
 // --- Funciones del Temporizador y Finalización (con logs mejorados) ---
 
@@ -365,6 +366,7 @@ function finalizarChat() {
   if (temporizadorAdvertencia) clearTimeout(temporizadorAdvertencia);
   if (temporizadorCierre) clearTimeout(temporizadorCierre);
   console.log("🔚 Chat finalizado y timers limpiados.");
+  ultimoEnlace = "";
 }
 
 function enviarTranscripcionPorEmail() {
@@ -375,6 +377,7 @@ function enviarTranscripcionPorEmail() {
   }
   const transcripcionParaEnviar = [...transcripcion]; // Copiar antes de limpiar
   transcripcion = []; // Limpiar transcripción DESPUÉS de copiarla para el envío
+  ultimoEnlace = "";
   console.log("🧹 Transcripción limpiada localmente.");
   console.log("📦 Enviando transcripción:", JSON.stringify(transcripcionParaEnviar, null, 2));
 
@@ -422,6 +425,8 @@ $w.onReady(() => {
         if (temporizadorCierre) clearTimeout(temporizadorCierre);
         console.log("⏰ Timers cancelados por nuevo mensaje de usuario.");
 
+        const quiereMapa = /\b(coordenadas?|coordinates?|map(?:a)?|link|enlace)\b/i.test(mensaje);
+
         // Registrar mensaje del usuario
         transcripcion.push({ tipo: 'usuario', mensaje });
 
@@ -429,6 +434,13 @@ $w.onReady(() => {
         let response;
         try {
             response = await procesarConOpenAI(mensaje);
+            if (quiereMapa) {
+                const enlace = extraerEnlaceGoogleMaps(response);
+                if (enlace && enlace !== ultimoEnlace) {
+                    response += `\n\nMapa: ${enlace}`;
+                    ultimoEnlace = enlace;
+                }
+            }
             ultimaRespuesta = response;
             transcripcion.push({ tipo: 'bot', mensaje: response });
 
@@ -461,6 +473,22 @@ $w.onReady(() => {
 async function procesarConOpenAI(input) {
   // Asegúrate que tu backend/openaiHandler maneje errores o los lance
   return await sendMessageToOpenAI(input, systemPrompt);
+}
+
+function extraerEnlaceGoogleMaps(texto) {
+  const coordMatch = texto.match(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/);
+  if (coordMatch) {
+    return `https://www.google.com/maps/search/?api=1&query=${coordMatch[1]},${coordMatch[2]}`;
+  }
+  const placeRegex = /(?:recomiendo|recomendar|visita|visit|check out|ve a|dir[íi]gete a)\s+([^\.\n]+)/i;
+  const placeMatch = texto.match(placeRegex);
+  if (placeMatch) {
+    const lugar = placeMatch[1].trim();
+    if (lugar) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lugar)}`;
+    }
+  }
+  return '';
 }
 
 // Nota: Asegúrate que las funciones importadas 'enviarEmailAlHuesped', 'enviarEmail',

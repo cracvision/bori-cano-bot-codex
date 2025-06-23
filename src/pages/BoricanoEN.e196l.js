@@ -19,6 +19,7 @@ let chatTranscript = [];
 let hasUserInteractedInitially = false;
 let currentSessionState = { threadId: null };
 let pollingInterval = null; // Para controlar el ciclo de polling
+let lastMapLink = "";
 
 function prepareTextForTTS(text) {
     if (typeof text !== 'string') return '';
@@ -119,6 +120,7 @@ $w.onReady(() => {
 async function processUserChatMessage(userMessage, iFrameElement) {
     chatTranscript.push({ role: 'user', content: userMessage });
     iFrameElement.postMessage({ type: 'showTypingIndicator' });
+    const wantsMap = /\b(coordenadas?|coordinates?|map(?:a)?|link|enlace)\b/i.test(userMessage);
 
     try {
         const startResult = await startAssistantRun(userMessage, currentSessionState.threadId);
@@ -126,7 +128,7 @@ async function processUserChatMessage(userMessage, iFrameElement) {
             throw new Error(startResult.error);
         }
         currentSessionState.threadId = startResult.threadId;
-        startPolling(startResult.runId, startResult.threadId, iFrameElement);
+        startPolling(startResult.runId, startResult.threadId, wantsMap, iFrameElement);
     } catch (error) {
         console.error("❌ EN: Error processing message:", error);
         const errorMsg = "Oops! Something went wrong. Try again? 🌊";
@@ -136,18 +138,21 @@ async function processUserChatMessage(userMessage, iFrameElement) {
     }
 }
 
-function startPolling(runId, threadId, iFrameElement) {
+function startPolling(runId, threadId, includeMapLink, iFrameElement) {
     if (pollingInterval) {
         clearInterval(pollingInterval);
     }
     pollingInterval = setInterval(async () => {
         try {
             console.log(`⏳ EN: Polling for result... RunID: ${runId}`);
-            const result = await getAssistantRunResult(threadId, runId, 'en');
+            const result = await getAssistantRunResult(threadId, runId, 'en', { includeMapLink, lastMapLink });
             if (result.status === 'completed') {
                 clearInterval(pollingInterval);
                 console.log("✅ EN: Polling complete. Received message:", result.botResponseText);
                 lastBotResponse = result.botResponseText;
+                if (result.mapsLink) {
+                    lastMapLink = result.mapsLink;
+                }
                 chatTranscript.push({ role: 'assistant', content: lastBotResponse, language: result.languageForTTS });
                 iFrameElement.postMessage({ type: 'botMessage', text: lastBotResponse });
                 iFrameElement.postMessage({ type: 'hideTypingIndicator' });
@@ -244,6 +249,7 @@ function resetChatSessionState() {
     lastBotResponse = "";
     hasUserInteractedInitially = false;
     currentSessionState = { threadId: null };
+    lastMapLink = "";
     console.log("🔄 EN: Chat session state reset.");
 }
 

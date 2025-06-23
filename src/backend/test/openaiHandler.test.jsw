@@ -53,7 +53,7 @@ const mockFetchGR = async (url) => {
   throw new Error('unexpected');
 };
 __setTestDependencies({ fetch: mockFetchGR, getSecret: async () => 'KEY' });
-const rr = await getAssistantRunResult('thread123', 'run123');
+const rr = await getAssistantRunResult('thread123', 'run123', 'en', { includeMapLink: false });
 assert.strictEqual(rr.status, 'completed');
 assert.strictEqual(rr.botResponseText, 'Hola');
 assert.strictEqual(rr.cleanedTextForTTS, 'Hola');
@@ -69,11 +69,23 @@ const mockFetchCoord = async (url) => {
   throw new Error('unexpected');
 };
 __setTestDependencies({ fetch: mockFetchCoord, getSecret: async () => 'KEY' });
-const rrCoord = await getAssistantRunResult('t1', 'r1');
+const rrCoord = await getAssistantRunResult('t1', 'r1', 'en', { includeMapLink: true });
 assert.strictEqual(rrCoord.status, 'completed');
 assert.ok(rrCoord.botResponseText.includes('Mapa: https://www.google.com/maps/search/'));
 assert.ok(!rrCoord.cleanedTextForTTS.includes('18.3'));
-assert.ok(!rrCoord.cleanedTextForTTS.includes('maps')); 
+assert.ok(!rrCoord.cleanedTextForTTS.includes('maps'));
+
+// coordinates but map link not requested
+__setTestDependencies({ fetch: mockFetchCoord, getSecret: async () => 'KEY' });
+const rrCoordNoLink = await getAssistantRunResult('t1', 'r1', 'en', { includeMapLink: false });
+assert.strictEqual(rrCoordNoLink.status, 'completed');
+assert.strictEqual(rrCoordNoLink.botResponseText, 'Coords 18.3, -65.4');
+
+// same coordinates again should not repeat link
+__setTestDependencies({ fetch: mockFetchCoord, getSecret: async () => 'KEY' });
+const rrCoordRepeat = await getAssistantRunResult('t1', 'r1', 'en', { includeMapLink: true, lastMapLink: rrCoord.mapsLink });
+assert.strictEqual(rrCoordRepeat.status, 'completed');
+assert.strictEqual(rrCoordRepeat.botResponseText, 'Coords 18.3, -65.4');
 
 // getAssistantRunResult failure
 __setTestDependencies({ fetch: async () => { throw new Error('fail'); }, getSecret: async () => 'KEY' });
