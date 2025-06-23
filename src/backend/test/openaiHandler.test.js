@@ -1,4 +1,5 @@
-import assert from 'assert';
+import { test } from 'node:test';
+import assert from 'assert/strict';
 import { readFile } from 'fs/promises';
 import vm from 'vm';
 
@@ -14,119 +15,117 @@ vm.createContext(sandbox);
 vm.runInContext(code, sandbox, { filename: 'openaiHandler.jsw' });
 const { __setTestDependencies, startAssistantRun, getAssistantRunResult } = sandbox.module.exports;
 
-// startAssistantRun success
-const mockFetchSuccess = async (url) => {
-  if (url.endsWith('/threads')) {
-    return { ok: true, json: async () => ({ id: 'thread123' }) };
-  }
-  if (url.includes('/messages')) {
-    return { ok: true, json: async () => ({}) };
-  }
-  if (url.includes('/runs')) {
-    return { ok: true, json: async () => ({ id: 'run123' }) };
-  }
-  throw new Error('unexpected');
-};
-__setTestDependencies({ fetch: mockFetchSuccess, getSecret: async () => 'KEY' });
-const res = await startAssistantRun('hello', null);
-assert.strictEqual(res.threadId, 'thread123');
-assert.strictEqual(res.runId, 'run123');
+test('startAssistantRun success', async () => {
+  const mockFetchSuccess = async (url) => {
+    if (url.endsWith('/threads')) return { ok: true, json: async () => ({ id: 'thread123' }) };
+    if (url.includes('/messages')) return { ok: true, json: async () => ({}) };
+    if (url.includes('/runs')) return { ok: true, json: async () => ({ id: 'run123' }) };
+    throw new Error('unexpected');
+  };
+  __setTestDependencies({ fetch: mockFetchSuccess, getSecret: async () => 'KEY' });
+  const res = await startAssistantRun('hello', null);
+  assert.strictEqual(res.threadId, 'thread123');
+  assert.strictEqual(res.runId, 'run123');
+});
 
-// startAssistantRun failure
-__setTestDependencies({ fetch: async () => { throw new Error('fail'); }, getSecret: async () => 'KEY' });
-let threw = false;
-try {
-  await startAssistantRun('hello', null);
-} catch (e) {
-  threw = true;
-}
-assert.strictEqual(threw, true);
-
-// getAssistantRunResult success
-const mockFetchGR = async (url) => {
-  if (url.includes('/runs/')) {
-    return { ok: true, json: async () => ({ status: 'completed' }) };
+test('startAssistantRun failure', async () => {
+  __setTestDependencies({ fetch: async () => { throw new Error('fail'); }, getSecret: async () => 'KEY' });
+  let threw = false;
+  try {
+    await startAssistantRun('hello', null);
+  } catch {
+    threw = true;
   }
-  if (url.includes('/messages')) {
-    return { ok: true, json: async () => ({ data: [{ content: [{ type: 'text', text: { value: 'Hola' } }] }] }) };
-  }
-  throw new Error('unexpected');
-};
-__setTestDependencies({ fetch: mockFetchGR, getSecret: async () => 'KEY' });
-const rr = await getAssistantRunResult('thread123', 'run123', 'en', {});
-assert.strictEqual(rr.status, 'completed');
-assert.strictEqual(rr.botResponseText, 'Hola');
-assert.strictEqual(rr.cleanedTextForTTS, 'Hola');
+  assert.strictEqual(threw, true);
+});
 
-// getAssistantRunResult with coordinates
-const mockFetchCoord = async (url) => {
-  if (url.includes('/runs/')) {
-    return { ok: true, json: async () => ({ status: 'completed' }) };
-  }
-  if (url.includes('/messages')) {
-    return { ok: true, json: async () => ({ data: [{ content: [{ type: 'text', text: { value: 'Coords 18.3, -65.4' } }] }] }) };
-  }
-  throw new Error('unexpected');
-};
-__setTestDependencies({ fetch: mockFetchCoord, getSecret: async () => 'KEY' });
-const rrCoord = await getAssistantRunResult('t1', 'r1', 'en', {});
-assert.strictEqual(rrCoord.status, 'completed');
-assert.ok(rrCoord.botResponseText.includes('Would you like the Google Maps link?'));
-assert.ok(!rrCoord.botResponseText.includes('https://'));
-assert.ok(rrCoord.awaitingMapConfirmation.startsWith('https://www.google.com/maps/search/'));
-assert.ok(!rrCoord.cleanedTextForTTS.includes('18.3'));
-assert.ok(!rrCoord.cleanedTextForTTS.includes('maps'));
+test('getAssistantRunResult success', async () => {
+  const mockFetchGR = async (url) => {
+    if (url.includes('/runs/')) return { ok: true, json: async () => ({ status: 'completed' }) };
+    if (url.includes('/messages')) return { ok: true, json: async () => ({ data: [{ content: [{ type: 'text', text: { value: 'Hola' } }] }] }) };
+    throw new Error('unexpected');
+  };
+  __setTestDependencies({ fetch: mockFetchGR, getSecret: async () => 'KEY' });
+  const rr = await getAssistantRunResult('thread123', 'run123', 'en', {});
+  assert.strictEqual(rr.status, 'completed');
+  assert.strictEqual(rr.botResponseText, 'Hola');
+  assert.strictEqual(rr.cleanedTextForTTS, 'Hola');
+});
 
-// coordinates separated by space instead of comma
-const mockFetchSpace = async (url) => {
-  if (url.includes('/runs/')) {
-    return { ok: true, json: async () => ({ status: 'completed' }) };
+test('getAssistantRunResult with coordinates', async () => {
+  const mockFetchCoord = async (url) => {
+    if (url.includes('/runs/')) return { ok: true, json: async () => ({ status: 'completed' }) };
+    if (url.includes('/messages')) return { ok: true, json: async () => ({ data: [{ content: [{ type: 'text', text: { value: 'Coords 18.3, -65.4' } }] }] }) };
+    throw new Error('unexpected');
+  };
+  __setTestDependencies({ fetch: mockFetchCoord, getSecret: async () => 'KEY' });
+  const rrCoord = await getAssistantRunResult('t1', 'r1', 'en', {});
+  assert.strictEqual(rrCoord.status, 'completed');
+  assert.ok(rrCoord.botResponseText.includes('Would you like the Google Maps link?'));
+  assert.ok(!rrCoord.botResponseText.includes('https://'));
+  assert.ok(rrCoord.awaitingMapConfirmation.startsWith('https://www.google.com/maps/search/'));
+  assert.ok(!rrCoord.cleanedTextForTTS.includes('18.3'));
+  assert.ok(!rrCoord.cleanedTextForTTS.includes('maps'));
+});
+
+test('coordinates separated by space instead of comma', async () => {
+  const mockFetchSpace = async (url) => {
+    if (url.includes('/runs/')) return { ok: true, json: async () => ({ status: 'completed' }) };
+    if (url.includes('/messages')) return { ok: true, json: async () => ({ data: [{ content: [{ type: 'text', text: { value: 'Coords 18.3 -65.4' } }] }] }) };
+    throw new Error('unexpected');
+  };
+  __setTestDependencies({ fetch: mockFetchSpace, getSecret: async () => 'KEY' });
+  const rrSpace = await getAssistantRunResult('t2', 'r2', 'en', {});
+  assert.strictEqual(rrSpace.status, 'completed');
+  assert.ok(rrSpace.botResponseText.includes('Would you like the Google Maps link?'));
+  assert.ok(rrSpace.awaitingMapConfirmation.startsWith('https://www.google.com/maps/search/'));
+});
+
+test('message already contains a maps link', async () => {
+  const mockFetchLink = async (url) => {
+    if (url.includes('/runs/')) return { ok: true, json: async () => ({ status: 'completed' }) };
+    if (url.includes('/messages')) return { ok: true, json: async () => ({ data: [{ content: [{ type: 'text', text: { value: 'See https://maps.app.goo.gl/xyz' } }] }] }) };
+    throw new Error('unexpected');
+  };
+  __setTestDependencies({ fetch: mockFetchLink, getSecret: async () => 'KEY' });
+  const rrLink = await getAssistantRunResult('t3', 'r3', 'en', {});
+  assert.ok(rrLink.botResponseText.includes('Would you like the Google Maps link?'));
+  assert.ok(!rrLink.botResponseText.includes('https://'));
+  assert.ok(rrLink.awaitingMapConfirmation.includes('maps'));
+});
+
+test('include map link after confirmation', async () => {
+  const mockFetchCoord = async (url) => {
+    if (url.includes('/runs/')) return { ok: true, json: async () => ({ status: 'completed' }) };
+    if (url.includes('/messages')) return { ok: true, json: async () => ({ data: [{ content: [{ type: 'text', text: { value: 'Coords 18.3, -65.4' } }] }] }) };
+    throw new Error('unexpected');
+  };
+  __setTestDependencies({ fetch: mockFetchCoord, getSecret: async () => 'KEY' });
+  const first = await getAssistantRunResult('t3', 'r3', 'en', {});
+  const rrConfirmed = await getAssistantRunResult('t3', 'r3', 'en', { awaitingMapConfirmation: first.awaitingMapConfirmation, includeMapLink: true, lastMapLink: first.awaitingMapConfirmation });
+  assert.ok(rrConfirmed.botResponseText.includes(first.awaitingMapConfirmation));
+  assert.strictEqual(rrConfirmed.awaitingMapConfirmation, null);
+});
+
+test('duplicate link should not trigger prompt again', async () => {
+  const mockFetchCoord = async (url) => {
+    if (url.includes('/runs/')) return { ok: true, json: async () => ({ status: 'completed' }) };
+    if (url.includes('/messages')) return { ok: true, json: async () => ({ data: [{ content: [{ type: 'text', text: { value: 'Coords 18.3, -65.4' } }] }] }) };
+    throw new Error('unexpected');
+  };
+  __setTestDependencies({ fetch: mockFetchCoord, getSecret: async () => 'KEY' });
+  const rrCoord = await getAssistantRunResult('t1', 'r1', 'en', {});
+  const rrDup = await getAssistantRunResult('t1', 'r1', 'en', { lastMapLink: rrCoord.awaitingMapConfirmation });
+  assert.ok(!rrDup.botResponseText.includes('Would you like the Google Maps link?'));
+});
+
+test('getAssistantRunResult failure', async () => {
+  __setTestDependencies({ fetch: async () => { throw new Error('fail'); }, getSecret: async () => 'KEY' });
+  let threw = false;
+  try {
+    await getAssistantRunResult('t', 'r', 'en', {});
+  } catch {
+    threw = true;
   }
-  if (url.includes('/messages')) {
-    return { ok: true, json: async () => ({ data: [{ content: [{ type: 'text', text: { value: 'Coords 18.3 -65.4' } }] }] }) };
-  }
-  throw new Error('unexpected');
-};
-__setTestDependencies({ fetch: mockFetchSpace, getSecret: async () => 'KEY' });
-const rrSpace = await getAssistantRunResult('t2', 'r2', 'en', {});
-assert.strictEqual(rrSpace.status, 'completed');
-assert.ok(rrSpace.botResponseText.includes('Would you like the Google Maps link?'));
-assert.ok(rrSpace.awaitingMapConfirmation.startsWith('https://www.google.com/maps/search/'));
-
-// message already contains a maps link
-const mockFetchLink = async (url) => {
-  if (url.includes('/runs/')) {
-    return { ok: true, json: async () => ({ status: 'completed' }) };
-  }
-  if (url.includes('/messages')) {
-    return { ok: true, json: async () => ({ data: [{ content: [{ type: 'text', text: { value: 'See https://maps.app.goo.gl/xyz' } }] }] }) };
-  }
-  throw new Error('unexpected');
-};
-__setTestDependencies({ fetch: mockFetchLink, getSecret: async () => 'KEY' });
-const rrLink = await getAssistantRunResult('t3', 'r3', 'en', {});
-assert.ok(rrLink.botResponseText.includes('Would you like the Google Maps link?'));
-assert.ok(!rrLink.botResponseText.includes('https://'));
-assert.ok(rrLink.awaitingMapConfirmation.includes('maps'));
-
-// include map link after confirmation
-const rrConfirmed = await getAssistantRunResult('t3', 'r3', 'en', { awaitingMapConfirmation: rrLink.awaitingMapConfirmation, includeMapLink: true, lastMapLink: rrLink.awaitingMapConfirmation });
-assert.ok(rrConfirmed.botResponseText.includes(rrLink.awaitingMapConfirmation));
-assert.strictEqual(rrConfirmed.awaitingMapConfirmation, null);
-
-// duplicate link should not trigger prompt again
-__setTestDependencies({ fetch: mockFetchCoord, getSecret: async () => 'KEY' });
-const rrDup = await getAssistantRunResult('t1', 'r1', 'en', { lastMapLink: rrCoord.awaitingMapConfirmation });
-assert.ok(!rrDup.botResponseText.includes('Would you like the Google Maps link?'));
-
-// getAssistantRunResult failure
-__setTestDependencies({ fetch: async () => { throw new Error('fail'); }, getSecret: async () => 'KEY' });
-let threw2 = false;
-try {
-  await getAssistantRunResult('t', 'r', 'en', {});
-} catch (e) {
-  threw2 = true;
-}
-assert.strictEqual(threw2, true);
-
-console.log('Tests passed');
+  assert.strictEqual(threw, true);
+});
