@@ -76,6 +76,22 @@ assert.ok(rrCoord.awaitingMapConfirmation.startsWith('https://www.google.com/map
 assert.ok(!rrCoord.cleanedTextForTTS.includes('18.3'));
 assert.ok(!rrCoord.cleanedTextForTTS.includes('maps'));
 
+// coordinates separated by space instead of comma
+const mockFetchSpace = async (url) => {
+  if (url.includes('/runs/')) {
+    return { ok: true, json: async () => ({ status: 'completed' }) };
+  }
+  if (url.includes('/messages')) {
+    return { ok: true, json: async () => ({ data: [{ content: [{ type: 'text', text: { value: 'Coords 18.3 -65.4' } }] }] }) };
+  }
+  throw new Error('unexpected');
+};
+__setTestDependencies({ fetch: mockFetchSpace, getSecret: async () => 'KEY' });
+const rrSpace = await getAssistantRunResult('t2', 'r2', 'en', {});
+assert.strictEqual(rrSpace.status, 'completed');
+assert.ok(rrSpace.botResponseText.includes('Would you like the Google Maps link?'));
+assert.ok(rrSpace.awaitingMapConfirmation.startsWith('https://www.google.com/maps/search/'));
+
 // getAssistantRunResult failure
 __setTestDependencies({ fetch: async () => { throw new Error('fail'); }, getSecret: async () => 'KEY' });
 let threw2 = false;
