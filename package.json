@@ -5,12 +5,15 @@
     "eslint": "^8.25.0",
     "react": "16.14.0"
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "scripts": {
     "postinstall": "wix sync-types",
     "dev": "wix dev",
     "lint": "eslint .",
     "test": "node src/backend/test/openaiHandler.test.js && node src/public/test/sanitizeHTML.test.js"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
+
