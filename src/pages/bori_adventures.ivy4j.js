@@ -1,4 +1,4 @@
-import { getViatorProductDetails } from 'backend/viatorAPI';
+import { getViatorProductDetails } from 'backend/viatorAPI.jsw';
 import wixData from 'wix-data';
 
 $w.onReady(async function () {

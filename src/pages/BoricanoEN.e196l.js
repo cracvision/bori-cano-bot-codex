@@ -1,8 +1,8 @@
 // Código para la PÁGINA "BoricanoEN.js" en Wix (Frontend Velo)
 
 // --- IMPORTACIONES (CORREGIDO) ---
-import { startAssistantRun, getAssistantRunResult } from 'backend/openaiHandler';
-import { enviarEmailAlHuesped, enviarEmail } from 'backend/email';
+import { startAssistantRun, getAssistantRunResult } from 'backend/openaiHandler.jsw';
+import { enviarEmailAlHuesped, enviarEmail } from 'backend/email.jsw';
 import { generateAudio } from 'backend/ttsHandler';
 
 // --- CONFIGURACIÓN DE TEMPORIZADORES ---
