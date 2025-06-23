@@ -3,7 +3,8 @@
     "@wix/cli": "^1.0.0",
     "@wix/eslint-plugin-cli": "^1.0.0",
     "eslint": "^8.25.0",
-    "react": "16.14.0"
+    "react": "16.14.0",
+    "jsdom": "^22.1.0"
   },
   "dependencies": {
   },
@@ -11,6 +12,6 @@
     "postinstall": "wix sync-types",
     "dev": "wix dev",
     "lint": "eslint .",
-    "test": "node src/backend/test/openaiHandler.test.js"
+    "test": "node src/backend/test/openaiHandler.test.js && node src/public/test/renderMensaje.test.js"
   }
 }
