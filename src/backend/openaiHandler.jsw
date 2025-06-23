@@ -174,15 +174,18 @@ export async function getAssistantRunResult(threadId, runId, language = 'en', se
                     }
                 }
             }
+            console.log("🌐 openaiHandler: candidate maps link ->", mapsLink);
 
             if (mapsLink) {
                 const lastLink = sessionState.lastOfferedLink || sessionState.lastMapLink;
                 if (sessionState.includeMapLink && sessionState.awaitingMapConfirmation === mapsLink) {
+            console.log("🌐 openaiHandler: including maps link in response");
                     botResponseText += `\n\n\ud83d\udccd ${mapsLink}`;
                     sessionState.lastOfferedLink = mapsLink;
                     sessionState.awaitingMapConfirmation = null;
                     sessionState.includeMapLink = false;
                 } else if (lastLink !== mapsLink) {
+            console.log("🌐 openaiHandler: prompting user to confirm map link");
                     botResponseText += `\n\nWould you like the Google Maps link?`;
                     sessionState.awaitingMapConfirmation = mapsLink;
                     sessionState.lastOfferedLink = mapsLink;
