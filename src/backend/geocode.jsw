@@ -1,0 +1,88 @@
+import { fetch } from 'wix-fetch';
+import { getSecret } from 'wix-secrets-backend';
+
+// Allow dependency injection for tests
+let fetchFn = fetch;
+let getSecretFn = getSecret;
+
+export function __setTestDependencies({ fetch, getSecret } = {}) {
+    if (fetch) fetchFn = fetch;
+    if (getSecret) getSecretFn = getSecret;
+    googleMapsKey = null; // reset cache
+}
+
+let googleMapsKey;
+async function initializeApiKey() {
+    if (googleMapsKey) return googleMapsKey;
+    try {
+        console.log('📍 geocode.jsw: Obteniendo google_maps_api_key...');
+        googleMapsKey = await getSecretFn('google_maps_api_key');
+        if (!googleMapsKey) {
+            console.error('💥 geocode.jsw: google_maps_api_key no encontrada.');
+        }
+    } catch (error) {
+        console.error('💥 geocode.jsw: Error al obtener la clave de Google Maps:', error);
+        googleMapsKey = null;
+    }
+    return googleMapsKey;
+}
+
+function delay(ms) {
+    return new Promise(res => setTimeout(res, ms));
+}
+
+export async function geocode(query, retries = 5, initialDelay = 500) {
+    const apiKey = await initializeApiKey();
+    if (!apiKey) {
+        return { error: 'Google Maps API Key not configured.' };
+    }
+
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`;
+
+    for (let i = 0; i < retries; i++) {
+        try {
+            const response = await fetchFn(url);
+            if (!response.ok) {
+                console.error(`💥 geocode.jsw: HTTP ${response.status}`);
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const data = await response.json();
+
+            if (data.status === 'OVER_QUERY_LIMIT') {
+                if (i === retries - 1) {
+                    console.error('💥 geocode.jsw: OVER_QUERY_LIMIT persiste tras reintentos');
+                    return { error: 'OVER_QUERY_LIMIT' };
+                }
+                const backoff = Math.pow(2, i) * initialDelay + Math.random() * 100;
+                console.warn(`📍 geocode.jsw: OVER_QUERY_LIMIT, reintentando en ${backoff}ms...`);
+                await delay(backoff);
+                continue;
+            }
+
+            if (data.status === 'REQUEST_DENIED' || data.status === 'API_KEY_EXPIRED') {
+                console.error(`💥 geocode.jsw: Request denied. Status: ${data.status}. Mensaje: ${data.error_message}`);
+                return { error: 'Google Maps API key invalid or expired.' };
+            }
+
+            if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+                console.error(`💥 geocode.jsw: Fallo en geocodificación. Status: ${data.status}. Mensaje: ${data.error_message}`);
+                return { error: `Geocoding failed: ${data.status}` };
+            }
+
+            const result = data.results[0];
+            return {
+                lat: result.geometry.location.lat,
+                lng: result.geometry.location.lng,
+                formattedAddress: result.formatted_address
+            };
+
+        } catch (error) {
+            console.error(`💥 geocode.jsw: Error en intento ${i + 1}:`, error);
+            if (i === retries - 1) return { error: error.message };
+            const backoff = Math.pow(2, i) * initialDelay + Math.random() * 100;
+            await delay(backoff);
+        }
+    }
+    return { error: 'Geocoding failed after retries.' };
+}
+
