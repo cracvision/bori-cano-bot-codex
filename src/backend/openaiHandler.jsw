@@ -150,29 +150,43 @@ export async function getAssistantRunResult(threadId, runId, language = 'en', se
 
             botResponseText = removeCitations(botResponseText);
 
-            // --- Generate Google Maps link if coordinates or place recommendation detected ---
+            // --- Extract or generate Google Maps link ---
             let mapsLink = '';
-            let coordMatch = botResponseText.match(/(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)/);
-            if (coordMatch) {
-                const lat = coordMatch[1];
-                const lng = coordMatch[2];
-                mapsLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+            const linkRegex = /(https?:\/\/(?:www\.)?(?:maps\.app\.goo\.gl|google\.[^\s]+\/maps[^\s]*))/i;
+            const linkMatch = botResponseText.match(linkRegex);
+            if (linkMatch) {
+                mapsLink = linkMatch[1];
+                botResponseText = botResponseText.replace(linkMatch[0], '').trim();
             } else {
-                const placeRegex = /(?:recomiendo|recomendar|visita|visit|check out|ve a|dir[íi]gete a)\s+([^\.\n]+)/i;
-                const placeMatch = botResponseText.match(placeRegex);
-                if (placeMatch) {
-                    const place = placeMatch[1].trim();
-                    if (place) {
-                        mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`;
+                const coordMatch = botResponseText.match(/(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)/);
+                if (coordMatch) {
+                    const lat = coordMatch[1];
+                    const lng = coordMatch[2];
+                    mapsLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                } else {
+                    const placeRegex = /(?:recomiendo|recomendar|visita|visit|checkout|ve a|dir[íi]gete a)\s+([^\.\n]+)/i;
+                    const placeMatch = botResponseText.match(placeRegex);
+                    if (placeMatch) {
+                        const place = placeMatch[1].trim();
+                        if (place) {
+                            mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`;
+                        }
                     }
                 }
             }
 
             if (mapsLink) {
-                if (sessionState.lastOfferedLink !== mapsLink) {
+                const lastLink = sessionState.lastOfferedLink || sessionState.lastMapLink;
+                if (sessionState.includeMapLink && sessionState.awaitingMapConfirmation === mapsLink) {
+                    botResponseText += `\n\n\ud83d\udccd ${mapsLink}`;
+                    sessionState.lastOfferedLink = mapsLink;
+                    sessionState.awaitingMapConfirmation = null;
+                    sessionState.includeMapLink = false;
+                } else if (lastLink !== mapsLink) {
                     botResponseText += `\n\nWould you like the Google Maps link?`;
                     sessionState.awaitingMapConfirmation = mapsLink;
                     sessionState.lastOfferedLink = mapsLink;
+                    sessionState.includeMapLink = false;
                 }
             } else {
                 sessionState.awaitingMapConfirmation = null;
@@ -187,7 +201,8 @@ export async function getAssistantRunResult(threadId, runId, language = 'en', se
                 botResponseText: botResponseText,
                 cleanedTextForTTS: cleanedForTTS,
                 languageForTTS: languageForTTS,
-                awaitingMapConfirmation: sessionState.awaitingMapConfirmation || null
+                awaitingMapConfirmation: sessionState.awaitingMapConfirmation || null,
+                lastMapLink: sessionState.lastOfferedLink || null
             };
         } else if (['failed', 'cancelled', 'expired'].includes(statusData.status)) {
              console.error(`💥 Run fallido con estado: ${statusData.status}`);

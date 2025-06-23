@@ -17,7 +17,7 @@ let initialAutoCloseTimeoutId;
 let lastBotResponse = "";
 let chatTranscript = [];
 let hasUserInteractedInitially = false;
-let currentSessionState = { threadId: null, awaitingMapConfirmation: null, lastOfferedLink: null };
+let currentSessionState = { threadId: null, awaitingMapConfirmation: null, lastMapLink: null };
 let pollingInterval = null; // Para controlar el ciclo de polling
 
 function prepareTextForTTS(text) {
@@ -132,6 +132,7 @@ async function processUserChatMessage(userMessage, iFrameElement) {
         const link = currentSessionState.awaitingMapConfirmation;
         const linkMsg = `\ud83d\udccd Here it is: ${link}`;
         currentSessionState.awaitingMapConfirmation = null;
+        currentSessionState.lastMapLink = link;
         lastBotResponse = linkMsg;
         chatTranscript.push({ role: 'assistant', content: linkMsg, language: 'en' });
         iFrameElement.postMessage({ type: 'botMessage', text: linkMsg });
@@ -165,6 +166,7 @@ function startPolling(runId, threadId, iFrameElement) {
             console.log(`⏳ EN: Polling for result... RunID: ${runId}`);
             const result = await getAssistantRunResult(threadId, runId, 'en', currentSessionState);
             currentSessionState.awaitingMapConfirmation = result.awaitingMapConfirmation;
+            currentSessionState.lastMapLink = result.lastMapLink;
             if (result.status === 'completed') {
                 clearInterval(pollingInterval);
                 console.log("✅ EN: Polling complete. Received message:", result.botResponseText);
@@ -264,7 +266,7 @@ function resetChatSessionState() {
     chatTranscript = [];
     lastBotResponse = "";
     hasUserInteractedInitially = false;
-    currentSessionState = { threadId: null, awaitingMapConfirmation: null, lastOfferedLink: null };
+    currentSessionState = { threadId: null, awaitingMapConfirmation: null, lastMapLink: null };
     console.log("🔄 EN: Chat session state reset.");
 }
 
