@@ -72,6 +72,7 @@ __setTestDependencies({ fetch: mockFetchCoord, getSecret: async () => 'KEY' });
 const rrCoord = await getAssistantRunResult('t1', 'r1', 'en', {});
 assert.strictEqual(rrCoord.status, 'completed');
 assert.ok(rrCoord.botResponseText.includes('Would you like the Google Maps link?'));
+assert.ok(!rrCoord.botResponseText.includes('https://'));
 assert.ok(rrCoord.awaitingMapConfirmation.startsWith('https://www.google.com/maps/search/'));
 assert.ok(!rrCoord.cleanedTextForTTS.includes('18.3'));
 assert.ok(!rrCoord.cleanedTextForTTS.includes('maps'));
@@ -91,6 +92,32 @@ const rrSpace = await getAssistantRunResult('t2', 'r2', 'en', {});
 assert.strictEqual(rrSpace.status, 'completed');
 assert.ok(rrSpace.botResponseText.includes('Would you like the Google Maps link?'));
 assert.ok(rrSpace.awaitingMapConfirmation.startsWith('https://www.google.com/maps/search/'));
+
+// message already contains a maps link
+const mockFetchLink = async (url) => {
+  if (url.includes('/runs/')) {
+    return { ok: true, json: async () => ({ status: 'completed' }) };
+  }
+  if (url.includes('/messages')) {
+    return { ok: true, json: async () => ({ data: [{ content: [{ type: 'text', text: { value: 'See https://maps.app.goo.gl/xyz' } }] }] }) };
+  }
+  throw new Error('unexpected');
+};
+__setTestDependencies({ fetch: mockFetchLink, getSecret: async () => 'KEY' });
+const rrLink = await getAssistantRunResult('t3', 'r3', 'en', {});
+assert.ok(rrLink.botResponseText.includes('Would you like the Google Maps link?'));
+assert.ok(!rrLink.botResponseText.includes('https://'));
+assert.ok(rrLink.awaitingMapConfirmation.includes('maps'));
+
+// include map link after confirmation
+const rrConfirmed = await getAssistantRunResult('t3', 'r3', 'en', { awaitingMapConfirmation: rrLink.awaitingMapConfirmation, includeMapLink: true, lastMapLink: rrLink.awaitingMapConfirmation });
+assert.ok(rrConfirmed.botResponseText.includes(rrLink.awaitingMapConfirmation));
+assert.strictEqual(rrConfirmed.awaitingMapConfirmation, null);
+
+// duplicate link should not trigger prompt again
+__setTestDependencies({ fetch: mockFetchCoord, getSecret: async () => 'KEY' });
+const rrDup = await getAssistantRunResult('t1', 'r1', 'en', { lastMapLink: rrCoord.awaitingMapConfirmation });
+assert.ok(!rrDup.botResponseText.includes('Would you like the Google Maps link?'));
 
 // getAssistantRunResult failure
 __setTestDependencies({ fetch: async () => { throw new Error('fail'); }, getSecret: async () => 'KEY' });
