@@ -5,14 +5,39 @@
   <title>Bori Chat EN</title>
 </head>
 <body>
+  <div id="container"></div>
   <script>
     function sanitizeHTML(html) {
       if (typeof html !== 'string') return '';
-      // Remove script and style tags
-      html = html.replace(/<\/?(?:script|style)[^>]*>/gi, '');
-      // Remove inline event handlers
+
+      if (typeof document !== 'undefined' && document.createElement) {
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+
+        temp.querySelectorAll('script').forEach(el => el.remove());
+
+        temp.querySelectorAll('*').forEach(el => {
+          [...el.attributes].forEach(attr => {
+            if (/^on/i.test(attr.name)) {
+              el.removeAttribute(attr.name);
+            } else if (attr.name.toLowerCase() === 'href') {
+              const hrefVal = attr.value;
+              const hasProtocol = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(hrefVal);
+              const isSafe = !hasProtocol || /^https?:/i.test(hrefVal);
+              if (!isSafe) {
+                el.removeAttribute('href');
+              }
+            }
+          });
+        });
+
+        return temp.innerHTML;
+      }
+
+      // Fallback for non-DOM environments
+      html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
       html = html.replace(/ on\w+=("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
-      // Sanitize anchor hrefs
       html = html.replace(/<a\b[^>]*>/gi, tag => {
         const hrefMatch = tag.match(/href\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i);
         if (hrefMatch) {
@@ -26,6 +51,11 @@
         return tag;
       });
       return html;
+    }
+
+    function insertSanitizedHTML(container, html) {
+      if (!container) return;
+      container.innerHTML = sanitizeHTML(html);
     }
   </script>
 </body>
