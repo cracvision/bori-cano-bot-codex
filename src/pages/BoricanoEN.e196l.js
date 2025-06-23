@@ -1,7 +1,7 @@
 // Código para la PÁGINA "BoricanoEN.js" en Wix (Frontend Velo)
 
 // --- IMPORTACIONES (CORREGIDO) ---
-import { startAssistantRun, getAssistantRunResult } from 'backend/openaiHandler';
+import { startAssistantRun, getAssistantRunResult, resetSessionState } from 'backend/openaiHandler';
 import { enviarEmailAlHuesped, enviarEmail } from 'backend/email';
 import { generateAudio } from 'backend/ttsHandler';
 
@@ -17,7 +17,7 @@ let initialAutoCloseTimeoutId;
 let lastBotResponse = "";
 let chatTranscript = [];
 let hasUserInteractedInitially = false;
-let currentSessionState = { threadId: null };
+let currentSessionState = { threadId: null, linkedLocations: new Set(), lastUserMessage: '', pendingLocation: null };
 let pollingInterval = null; // Para controlar el ciclo de polling
 
 function prepareTextForTTS(text) {
@@ -118,6 +118,7 @@ $w.onReady(() => {
 // --- PROCESAMIENTO DE MENSAJES (NUEVA ARQUITECTURA ASÍNCRONA) ---
 async function processUserChatMessage(userMessage, iFrameElement) {
     chatTranscript.push({ role: 'user', content: userMessage });
+    currentSessionState.lastUserMessage = userMessage;
     iFrameElement.postMessage({ type: 'showTypingIndicator' });
 
     try {
@@ -149,6 +150,9 @@ function startPolling(runId, threadId, iFrameElement) {
                 console.log("✅ EN: Polling complete. Received message:", result.botResponseText);
                 lastBotResponse = result.botResponseText;
                 chatTranscript.push({ role: 'assistant', content: lastBotResponse, language: result.languageForTTS });
+                if (result.linkedLocation) {
+                    currentSessionState.linkedLocations.add(result.linkedLocation);
+                }
                 iFrameElement.postMessage({ type: 'botMessage', text: lastBotResponse });
                 iFrameElement.postMessage({ type: 'hideTypingIndicator' });
                 resetActivityTimers(iFrameElement);
@@ -243,7 +247,8 @@ function resetChatSessionState() {
     chatTranscript = [];
     lastBotResponse = "";
     hasUserInteractedInitially = false;
-    currentSessionState = { threadId: null };
+    currentSessionState = { threadId: null, linkedLocations: new Set(), lastUserMessage: '', pendingLocation: null };
+    resetSessionState();
     console.log("🔄 EN: Chat session state reset.");
 }
 

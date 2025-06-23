@@ -8,11 +8,11 @@ code = code.replace(/import\s+\{[^}]+\}\s+from\s+'wix-fetch';?\n/, '')
            .replace(/export\s+(async\s+function)/g, '$1')
            .replace(/export\s+function/g, 'function');
 code = 'let fetch; let getSecret;\n' + code;
-code += '\nmodule.exports = { __setTestDependencies, startAssistantRun, getAssistantRunResult };';
+code += '\nmodule.exports = { __setTestDependencies, startAssistantRun, getAssistantRunResult, resetSessionState, getSessionState };';
 const sandbox = { module: { exports: {} }, exports: {} };
 vm.createContext(sandbox);
 vm.runInContext(code, sandbox, { filename: 'openaiHandler.jsw' });
-const { __setTestDependencies, startAssistantRun, getAssistantRunResult } = sandbox.module.exports;
+const { __setTestDependencies, startAssistantRun, getAssistantRunResult, resetSessionState, getSessionState } = sandbox.module.exports;
 
 // startAssistantRun success
 const mockFetchSuccess = async (url) => {
@@ -69,11 +69,18 @@ const mockFetchCoord = async (url) => {
   throw new Error('unexpected');
 };
 __setTestDependencies({ fetch: mockFetchCoord, getSecret: async () => 'KEY' });
-const rrCoord = await getAssistantRunResult('t1', 'r1');
+resetSessionState();
+getSessionState().lastUserMessage = 'Where is it? I need the map';
+let rrCoord = await getAssistantRunResult('t1', 'r1');
 assert.strictEqual(rrCoord.status, 'completed');
 assert.ok(rrCoord.botResponseText.includes('Mapa: https://www.google.com/maps/search/'));
 assert.ok(!rrCoord.cleanedTextForTTS.includes('18.3'));
-assert.ok(!rrCoord.cleanedTextForTTS.includes('maps')); 
+assert.ok(!rrCoord.cleanedTextForTTS.includes('maps'));
+
+// second call with same location should not add link again
+getSessionState().lastUserMessage = 'thanks';
+rrCoord = await getAssistantRunResult('t1', 'r1');
+assert.ok(!rrCoord.botResponseText.includes('https://www.google.com/maps/search/'));
 
 // getAssistantRunResult failure
 __setTestDependencies({ fetch: async () => { throw new Error('fail'); }, getSecret: async () => 'KEY' });

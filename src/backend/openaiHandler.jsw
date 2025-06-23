@@ -20,6 +20,22 @@ const ASSISTANT_ID = "asst_CplVyaMXTSyXkNuqhmQJeDfh";
 // --- Caché de la API Key ---
 let openAIApiKey;
 
+// --- Session State ---
+// Tracks user requests and locations already linked within the current session
+var currentSessionState = {
+    linkedLocations: new Set(),
+    lastUserMessage: '',
+    pendingLocation: null
+};
+
+export function resetSessionState() {
+    currentSessionState = { linkedLocations: new Set(), lastUserMessage: '', pendingLocation: null };
+}
+
+export function getSessionState() {
+    return currentSessionState;
+}
+
 // Retrieve and cache the OpenAI secret on first use
 async function initializeApiKey() {
     if (openAIApiKey) return openAIApiKey;
@@ -67,11 +83,24 @@ function removeCitations(text) {
     return text.replace(/【\d+:\w+†[^\]]+】/g, '');
 }
 
+function userRequestedLocation(text) {
+    if (!text) return false;
+    return /(map|maps|coordinate|directions|address|where|ubicaci\u00f3n|ubicacion|location)/i.test(text);
+}
+
+function userAccepted(text) {
+    if (!text) return false;
+    return /^(yes|sure|ok(?:ay)?|si|s\u00ed|claro|dale|yep|please)/i.test(text.trim());
+}
+
 // --- ARQUITECTURA ASÍNCRONA ---
 
 // --- FUNCIÓN #1: Iniciar el Run del Asistente ---
 export async function startAssistantRun(userMessage, currentThreadId) {
     console.log(`🧠 Iniciando Run. UserMsg: "${userMessage.substring(0, 50)}...", ThreadID: ${currentThreadId}`);
+
+    // store the last user message for later link logic
+    currentSessionState.lastUserMessage = userMessage;
     
     const apiKey = await initializeApiKey();
     if (!apiKey) return { error: "OpenAI API Key not configured." };
@@ -152,11 +181,13 @@ export async function getAssistantRunResult(threadId, runId, language = 'en') {
 
             // --- Generate Google Maps link if coordinates or place recommendation detected ---
             let mapsLink = '';
-            let coordMatch = botResponseText.match(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/);
+            let locationKey = null;
+            const coordMatch = botResponseText.match(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/);
             if (coordMatch) {
                 const lat = coordMatch[1];
                 const lng = coordMatch[2];
                 mapsLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                locationKey = `${lat},${lng}`;
             } else {
                 const placeRegex = /(?:recomiendo|recomendar|visita|visit|check out|ve a|dir[íi]gete a)\s+([^\.\n]+)/i;
                 const placeMatch = botResponseText.match(placeRegex);
@@ -164,12 +195,37 @@ export async function getAssistantRunResult(threadId, runId, language = 'en') {
                     const place = placeMatch[1].trim();
                     if (place) {
                         mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`;
+                        locationKey = place.toLowerCase();
                     }
                 }
             }
 
+            let finalLink = '';
+            const lastMsg = currentSessionState.lastUserMessage;
+            const wantsMap = userRequestedLocation(lastMsg) || (currentSessionState.pendingLocation && userAccepted(lastMsg));
+
             if (mapsLink) {
-                botResponseText += `\n\nMapa: ${mapsLink}`;
+                if (!currentSessionState.linkedLocations.has(locationKey)) {
+                    if (wantsMap) {
+                        finalLink = mapsLink;
+                        currentSessionState.linkedLocations.add(locationKey);
+                        currentSessionState.pendingLocation = null;
+                    } else {
+                        currentSessionState.pendingLocation = { key: locationKey, link: mapsLink };
+                    }
+                }
+            } else if (currentSessionState.pendingLocation && userAccepted(lastMsg)) {
+                const { key, link } = currentSessionState.pendingLocation;
+                if (!currentSessionState.linkedLocations.has(key)) {
+                    finalLink = link;
+                    currentSessionState.linkedLocations.add(key);
+                }
+                currentSessionState.pendingLocation = null;
+            }
+
+            if (finalLink) {
+                botResponseText += `\n\nMapa: ${finalLink}`;
+                locationKey = locationKey || (currentSessionState.pendingLocation && currentSessionState.pendingLocation.key);
             }
 
             let languageForTTS = botResponseText.toLowerCase().includes("wepa") || botResponseText.match(/[áéíóúñ¿¡]/) ? 'es' : 'en';
@@ -180,7 +236,8 @@ export async function getAssistantRunResult(threadId, runId, language = 'en') {
                 status: 'completed',
                 botResponseText: botResponseText,
                 cleanedTextForTTS: cleanedForTTS,
-                languageForTTS: languageForTTS
+                languageForTTS: languageForTTS,
+                linkedLocation: finalLink ? locationKey : null
             };
         } else if (['failed', 'cancelled', 'expired'].includes(statusData.status)) {
              console.error(`💥 Run fallido con estado: ${statusData.status}`);
