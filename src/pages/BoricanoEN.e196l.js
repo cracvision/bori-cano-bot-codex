@@ -17,7 +17,7 @@ let initialAutoCloseTimeoutId;
 let lastBotResponse = "";
 let chatTranscript = [];
 let hasUserInteractedInitially = false;
-let currentSessionState = { threadId: null, awaitingMapConfirmation: null, lastMapLink: null };
+let currentSessionState = { threadId: null, awaitingMapConfirmation: null, lastMapLink: null, includeMapLink: false };
 let pollingInterval = null; // Para controlar el ciclo de polling
 
 function prepareTextForTTS(text) {
@@ -129,17 +129,7 @@ async function processUserChatMessage(userMessage, iFrameElement) {
     iFrameElement.postMessage({ type: 'showTypingIndicator' });
 
     if (currentSessionState.awaitingMapConfirmation && isMapConfirmation(userMessage)) {
-        const link = currentSessionState.awaitingMapConfirmation;
-        const linkMsg = `\ud83d\udccd <a href="${link}" target="_blank" rel="noopener">Click here for map</a>`;
-        currentSessionState.awaitingMapConfirmation = null;
-        currentSessionState.lastMapLink = link;
-        lastBotResponse = linkMsg;
-        chatTranscript.push({ role: 'assistant', content: linkMsg, language: 'en' });
-        console.log("\ud83d\udccd EN: Sending confirmed maps link:", link);
-        iFrameElement.postMessage({ type: 'botMessage', text: linkMsg });
-        iFrameElement.postMessage({ type: 'hideTypingIndicator' });
-        resetActivityTimers(iFrameElement);
-        return;
+        currentSessionState.includeMapLink = true;
     }
 
     try {
@@ -168,6 +158,7 @@ function startPolling(runId, threadId, iFrameElement) {
             const result = await getAssistantRunResult(threadId, runId, 'en', currentSessionState);
             currentSessionState.awaitingMapConfirmation = result.awaitingMapConfirmation;
             currentSessionState.lastMapLink = result.lastMapLink;
+            currentSessionState.includeMapLink = false;
             if (result.awaitingMapConfirmation) {
                 console.log("🌐 EN: Candidate map link:", result.awaitingMapConfirmation);
             }
@@ -270,7 +261,7 @@ function resetChatSessionState() {
     chatTranscript = [];
     lastBotResponse = "";
     hasUserInteractedInitially = false;
-    currentSessionState = { threadId: null, awaitingMapConfirmation: null, lastMapLink: null };
+    currentSessionState = { threadId: null, awaitingMapConfirmation: null, lastMapLink: null, includeMapLink: false };
     console.log("🔄 EN: Chat session state reset.");
 }
 
