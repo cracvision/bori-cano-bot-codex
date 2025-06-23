@@ -152,7 +152,7 @@ export async function getAssistantRunResult(threadId, runId, language = 'en', se
 
             // --- Generate Google Maps link if coordinates or place recommendation detected ---
             let mapsLink = '';
-            let coordMatch = botResponseText.match(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/);
+            let coordMatch = botResponseText.match(/(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)/);
             if (coordMatch) {
                 const lat = coordMatch[1];
                 const lng = coordMatch[2];
@@ -180,7 +180,7 @@ export async function getAssistantRunResult(threadId, runId, language = 'en', se
 
             let languageForTTS = botResponseText.toLowerCase().includes("wepa") || botResponseText.match(/[áéíóúñ¿¡]/) ? 'es' : 'en';
 
-            const cleanedForTTS = cleanTextForTTS(botResponseText.replace(/https?:\/\/\S+/g, '').replace(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/g, ''));
+            const cleanedForTTS = cleanTextForTTS(botResponseText.replace(/https?:\/\/\S+/g, '').replace(/(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)/g, ''));
 
             return {
                 status: 'completed',
