@@ -135,6 +135,7 @@ async function processUserChatMessage(userMessage, iFrameElement) {
         currentSessionState.lastMapLink = link;
         lastBotResponse = linkMsg;
         chatTranscript.push({ role: 'assistant', content: linkMsg, language: 'en' });
+        console.log("\ud83d\udccd EN: Sending confirmed maps link:", link);
         iFrameElement.postMessage({ type: 'botMessage', text: linkMsg });
         iFrameElement.postMessage({ type: 'hideTypingIndicator' });
         resetActivityTimers(iFrameElement);
