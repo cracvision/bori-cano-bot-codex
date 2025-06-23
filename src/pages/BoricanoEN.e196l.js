@@ -168,6 +168,9 @@ function startPolling(runId, threadId, iFrameElement) {
             const result = await getAssistantRunResult(threadId, runId, 'en', currentSessionState);
             currentSessionState.awaitingMapConfirmation = result.awaitingMapConfirmation;
             currentSessionState.lastMapLink = result.lastMapLink;
+            if (result.awaitingMapConfirmation) {
+                console.log("🌐 EN: Candidate map link:", result.awaitingMapConfirmation);
+            }
             if (result.status === 'completed') {
                 clearInterval(pollingInterval);
                 console.log("✅ EN: Polling complete. Received message:", result.botResponseText);
