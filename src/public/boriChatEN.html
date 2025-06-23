@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bori Chat EN</title>
+</head>
+<body>
+  <script>
+    function sanitizeHTML(html) {
+      if (typeof html !== 'string') return '';
+      // Remove script and style tags
+      html = html.replace(/<\/?(?:script|style)[^>]*>/gi, '');
+      // Remove inline event handlers
+      html = html.replace(/ on\w+=("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+      // Sanitize anchor hrefs
+      html = html.replace(/<a\b[^>]*>/gi, tag => {
+        const hrefMatch = tag.match(/href\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i);
+        if (hrefMatch) {
+          const hrefVal = hrefMatch[2] || hrefMatch[3] || hrefMatch[4];
+          const hasProtocol = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(hrefVal);
+          const isSafe = !hasProtocol || /^https?:/i.test(hrefVal);
+          if (!isSafe) {
+            tag = tag.replace(/\s*href\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/i, '');
+          }
+        }
+        return tag;
+      });
+      return html;
+    }
+  </script>
+</body>
+</html>
