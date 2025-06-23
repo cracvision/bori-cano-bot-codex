@@ -1,3 +1,4 @@
+// testReporter.jsw - 2025-06-23
 import { enviarEmail } from 'email';
 
 export async function sendTestReport(testerName, testerEmail, results) {

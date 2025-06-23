@@ -1,3 +1,4 @@
+// openaiHandler.test.js - 2025-06-23
 import { test } from 'node:test';
 import assert from 'assert/strict';
 import { readFile } from 'fs/promises';

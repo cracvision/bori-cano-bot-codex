@@ -1,3 +1,4 @@
+// ttsHandler.jsw - 2025-06-23
 /**
  * ttsHandler.jsw
  * Módulo de backend de Velo para generar audio a partir de texto usando la API de OpenAI (Text-to-Speech).
