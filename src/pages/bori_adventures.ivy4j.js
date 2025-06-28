@@ -2,13 +2,11 @@ import { getViatorProductDetails } from 'backend/viatorAPI.jsw';
 import wixData from 'wix-data';
 
 $w.onReady(async function () {
-  // Array de ejemplo con 51 productCodes (reemplaza con los tuyos)
-  const productCodes = [
-    '12345', '12346', '12347', /* ... hasta 51 códigos únicos */
-    // Agrega los 51 productCodes reales que obtengas de tu panel de Viator
-  ];
-
   try {
+    // Obtener productCodes desde la colección ViatorProducts
+    const queryResult = await wixData.query('ViatorProducts').limit(51).find();
+    const productCodes = queryResult.items.map(item => item.productCode);
+
     const products = await getViatorProductDetails(productCodes);
 
     // Configura el Repeater con los datos
