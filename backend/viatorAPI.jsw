@@ -2,6 +2,39 @@
 import { fetch } from 'wix-fetch';
 import { getSecret } from 'wix-secrets-backend';
 
+let viatorApiKey;
+let viatorEnv;
+
+async function viatorFetch(path, options = {}) {
+  if (!viatorApiKey) {
+    viatorApiKey = await getSecret('viatorApiKey');
+  }
+  if (!viatorEnv) {
+    viatorEnv = await getSecret('viatorEnv');
+  }
+
+  const baseUrl = viatorEnv === 'sandbox'
+    ? 'https://api.sandbox.viator.com/partner'
+    : 'https://api.viator.com/partner';
+
+  const { headers = {}, ...rest } = options;
+  const response = await fetch(`${baseUrl}${path}`, {
+    headers: {
+      'API-key': viatorApiKey,
+      'Accept-Language': 'es-ES',
+      'Accept': 'application/json;version=2.0',
+      ...headers
+    },
+    ...rest
+  });
+
+  if (!response.ok) {
+    throw new Error(`Viator error ${response.status}`);
+  }
+
+  return response.json();
+}
+
 export async function getViatorProductDetails(productCodesArray) {
   try {
     const apiKey = await getSecret("viatorApiKey");
@@ -28,4 +61,22 @@ export async function getViatorProductDetails(productCodesArray) {
     console.error('Error fetching Viator products:', error);
     throw error; // Propaga el error para manejarlo en el frontend
   }
+}
+
+export async function getModifiedProducts(sinceIso) {
+  const query = sinceIso ? `?startDate=${encodeURIComponent(sinceIso)}` : '';
+  return viatorFetch(`/v1/products/modified${query}`);
+}
+
+export async function getBookingsStatus(sinceIso) {
+  const query = sinceIso ? `?startDate=${encodeURIComponent(sinceIso)}` : '';
+  return viatorFetch(`/v1/bookings/status${query}`);
+}
+
+export async function getExchangeRates() {
+  return viatorFetch('/v1/exchange-rates');
+}
+
+export async function getAllLocations() {
+  return viatorFetch('/v1/taxonomy/locations');
 }
