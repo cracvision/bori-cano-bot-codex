@@ -1,0 +1,36 @@
+// syncJobs.jsw - 2025-06-23
+import { withWixCron } from 'wix-cron';
+import wixData from 'wix-data';
+import {
+    getModifiedProducts,
+    getBookingsStatus,
+    getExchangeRates,
+    getAllLocations
+} from 'backend/viatorAPI.jsw';
+
+async function saveAll(collectionName, items) {
+    if (!Array.isArray(items) || items.length === 0) {
+        return;
+    }
+    await wixData.bulkSave(collectionName, items);
+}
+
+export const syncProducts = withWixCron('0 * * * *', async () => {
+    const products = await getModifiedProducts();
+    await saveAll('Products', products);
+});
+
+export const syncBookings = withWixCron('5 * * * *', async () => {
+    const bookings = await getBookingsStatus();
+    await saveAll('Bookings', bookings);
+});
+
+export const syncRates = withWixCron('0 0 * * *', async () => {
+    const rates = await getExchangeRates();
+    await saveAll('ExchangeRates', rates);
+});
+
+export const syncLocations = withWixCron('0 0 1 * *', async () => {
+    const locations = await getAllLocations();
+    await saveAll('Locations', locations);
+});
