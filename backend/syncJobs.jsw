@@ -5,7 +5,7 @@ import {
     getModifiedProducts,
     getBookingsStatus,
     getExchangeRates,
-    getAllLocations
+    getBulkLocations
 } from 'backend/viatorAPI.jsw';
 
 async function saveAll(collectionName, items) {
@@ -15,7 +15,7 @@ async function saveAll(collectionName, items) {
     await wixData.bulkSave(collectionName, items);
 }
 
-export const syncProducts = withWixCron('0 * * * *', async () => {
+export const syncProducts = withWixCron('*/15 * * * *', async () => {
     const products = await getModifiedProducts();
     await saveAll('Products', products);
 });
@@ -31,6 +31,6 @@ export const syncRates = withWixCron('0 0 * * *', async () => {
 });
 
 export const syncLocations = withWixCron('0 0 1 * *', async () => {
-    const locations = await getAllLocations();
+    const locations = await getBulkLocations();
     await saveAll('Locations', locations);
 });

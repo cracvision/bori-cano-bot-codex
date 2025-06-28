@@ -9,11 +9,11 @@ code = code.replace(/import\s+\{[^}]+\}\s+from\s+'wix-fetch';?\n/, '')
            .replace(/export\s+(async\s+function)/g, '$1')
            .replace(/export\s+function/g, 'function');
 code = `let fetch; let getSecret;\nfunction __setTestDependencies({ fetch: f, getSecret: gs } = {}) { if (f) fetch = f; if (gs) getSecret = gs; viatorApiKey = undefined; viatorEnv = undefined; }\n` + code;
-code += '\nmodule.exports = { __setTestDependencies, getViatorProductDetails, getModifiedProducts, getBookingsStatus, getExchangeRates, getAllLocations };';
+code += '\nmodule.exports = { __setTestDependencies, getViatorProductDetails, getModifiedProducts, getBookingsStatus, getExchangeRates, getBulkLocations };';
 const sandbox = { module: { exports: {} }, exports: {} };
 vm.createContext(sandbox);
 vm.runInContext(code, sandbox, { filename: 'viatorAPI.jsw' });
-const { __setTestDependencies, getViatorProductDetails, getModifiedProducts, getBookingsStatus, getExchangeRates, getAllLocations } = sandbox.module.exports;
+const { __setTestDependencies, getViatorProductDetails, getModifiedProducts, getBookingsStatus, getExchangeRates, getBulkLocations } = sandbox.module.exports;
 
 function createMocks() {
   const calls = [];
@@ -36,7 +36,7 @@ test('getModifiedProducts uses correct endpoint and headers', async () => {
   assert.strictEqual(calls.length, 1);
   const { url, options } = calls[0];
   assert.strictEqual(url, 'https://api.sandbox.viator.com/partner/v1/products/modified?startDate=2024-01-01T00%3A00%3A00Z');
-  assert.strictEqual(options.headers['API-key'], 'KEY');
+  assert.strictEqual(options.headers['exp-api-key'], 'KEY');
   assert.strictEqual(options.headers['Accept-Language'], 'es-ES');
   assert.strictEqual(options.headers['Accept'], 'application/json;version=2.0');
 });
@@ -46,7 +46,7 @@ test('getBookingsStatus uses correct endpoint and headers', async () => {
   await getBookingsStatus('2024-01-02T00:00:00Z');
   const { url, options } = calls[0];
   assert.strictEqual(url, 'https://api.sandbox.viator.com/partner/v1/bookings/status?startDate=2024-01-02T00%3A00%3A00Z');
-  assert.strictEqual(options.headers['API-key'], 'KEY');
+  assert.strictEqual(options.headers['exp-api-key'], 'KEY');
 });
 
 test('getExchangeRates uses correct endpoint', async () => {
@@ -56,11 +56,11 @@ test('getExchangeRates uses correct endpoint', async () => {
   assert.strictEqual(url, 'https://api.sandbox.viator.com/partner/v1/exchange-rates');
 });
 
-test('getAllLocations uses correct endpoint', async () => {
+test('getBulkLocations uses correct endpoint', async () => {
   const calls = createMocks();
-  await getAllLocations();
+  await getBulkLocations();
   const { url } = calls[0];
-  assert.strictEqual(url, 'https://api.sandbox.viator.com/partner/v1/taxonomy/locations');
+  assert.strictEqual(url, 'https://api.sandbox.viator.com/partner/locations/bulk');
 });
 
 test('getViatorProductDetails posts to bulk endpoint', async () => {

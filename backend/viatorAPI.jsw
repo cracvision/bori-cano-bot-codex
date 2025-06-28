@@ -20,7 +20,7 @@ async function viatorFetch(path, options = {}) {
   const { headers = {}, ...rest } = options;
   const response = await fetch(`${baseUrl}${path}`, {
     headers: {
-      'API-key': viatorApiKey,
+      'exp-api-key': viatorApiKey,
       'Accept-Language': 'es-ES',
       'Accept': 'application/json;version=2.0',
       ...headers
@@ -77,6 +77,7 @@ export async function getExchangeRates() {
   return viatorFetch('/v1/exchange-rates');
 }
 
-export async function getAllLocations() {
-  return viatorFetch('/v1/taxonomy/locations');
+// Para la ingesta de todas las ubicaciones. Llamar mensualmente.
+export async function getBulkLocations() {
+  return viatorFetch('/locations/bulk');
 }
