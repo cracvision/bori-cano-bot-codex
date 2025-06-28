@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Borí Adventures</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; padding:0; }
+    header { background:#2b2b40; color:#fff; padding:1rem; text-align:center; }
+    .container { padding:1rem; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:1rem; }
+    .card { border:1px solid #ccc; border-radius:4px; overflow:hidden; background:#fff; display:flex; flex-direction:column; }
+    .card img { width:100%; height:200px; object-fit:cover; }
+    .card h3 { margin:0.5rem; font-size:1.1rem; }
+    .card p { flex:1; padding:0 0.5rem 0.5rem 0.5rem; }
+    .card button { margin:0.5rem; background:#0066cc; color:#fff; border:none; padding:0.5rem; border-radius:4px; cursor:pointer; }
+    #pagination { margin-top:1rem; text-align:center; }
+    #pagination button { margin:0 0.25rem; }
+    #modal { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; }
+    #modalContent { background:#fff; padding:1rem; border-radius:4px; max-width:600px; width:90%; max-height:80%; overflow:auto; }
+    #modalClose { float:right; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <header><h1>Borí Adventures</h1></header>
+  <div class="container">
+    <div id="filters">
+      <input type="text" id="filterText" placeholder="Buscar...">
+    </div>
+    <div id="error" style="color:red;"></div>
+    <div id="products" class="grid"></div>
+    <div id="pagination"></div>
+  </div>
+
+  <div id="modal">
+    <div id="modalContent">
+      <span id="modalClose">X</span>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <script>
+    const state = { page: 1, totalPages: 1, filter: '' };
+
+    async function fetchProducts() {
+      const params = new URLSearchParams({ page: state.page, search: state.filter });
+      try {
+        const res = await fetch('/api/viator?' + params.toString());
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        state.totalPages = data.totalPages || 1;
+        renderProducts(data.data || []);
+        renderPagination();
+        window.parent.postMessage({ type: 'productsLoaded', count: (data.data || []).length }, '*');
+      } catch (err) {
+        console.error(err);
+        document.getElementById('error').textContent = 'Error al cargar productos';
+        window.parent.postMessage({ type: 'viatorError', message: err.message }, '*');
+      }
+    }
+
+    function renderProducts(items) {
+      const container = document.getElementById('products');
+      container.innerHTML = '';
+      items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <img src="${item.images && item.images[0] ? item.images[0].url : ''}" alt="">
+          <h3>${item.name}</h3>
+          <p>${item.shortDescription || ''}</p>
+          <button data-code="${item.productCode}">Detalles</button>
+        `;
+        card.querySelector('button').addEventListener('click', () => showDetails(item));
+        container.appendChild(card);
+      });
+    }
+
+    function renderPagination() {
+      const container = document.getElementById('pagination');
+      container.innerHTML = '';
+      for (let i = 1; i <= state.totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        if (i === state.page) btn.disabled = true;
+        btn.addEventListener('click', () => { state.page = i; fetchProducts(); });
+        container.appendChild(btn);
+      }
+    }
+
+    function showDetails(item) {
+      const modal = document.getElementById('modal');
+      const body = document.getElementById('modalBody');
+      body.innerHTML = `
+        <h2>${item.name}</h2>
+        <p>${item.description || item.shortDescription || ''}</p>
+        <a href="${item.productUrl}" target="_blank" rel="noopener">Ver en Viator</a>
+      `;
+      modal.style.display = 'flex';
+      window.parent.postMessage({ type: 'openProduct', code: item.productCode }, '*');
+    }
+
+    document.getElementById('modalClose').addEventListener('click', () => {
+      document.getElementById('modal').style.display = 'none';
+    });
+
+    document.getElementById('filterText').addEventListener('input', e => {
+      state.filter = e.target.value;
+      state.page = 1;
+      fetchProducts();
+    });
+
+    window.addEventListener('message', event => {
+      if (event.data && event.data.search) {
+        state.filter = event.data.search;
+        state.page = 1;
+        document.getElementById('filterText').value = state.filter;
+        fetchProducts();
+      }
+    });
+
+    fetchProducts();
+  </script>
+</body>
+</html>
