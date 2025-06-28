@@ -43,3 +43,12 @@ Learn more about [working with the Wix CLI](https://support.wix.com/en/article/v
 
 ## Invite contributors to work with you
 Git Integration & Wix CLI extends Editor X's [concurrent editing](https://support.wix.com/en/article/editor-x-about-concurrent-editing) capabilities. Invite other developers as collaborators on your [site](https://support.wix.com/en/article/inviting-people-to-contribute-to-your-site) and your [GitHub repo](https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-access-to-your-personal-repositories/inviting-collaborators-to-a-personal-repository). Multiple developers can work on a site's code at once.
+
+## Configure Viator API Access
+To use the live Viator API you need to store your production credentials in the Wix [Secrets Manager](https://support.wix.com/en/article/velo-working-with-secrets).
+
+1. In your site's dashboard, open **Velo → Secrets Manager**.
+2. Edit the secret **`viatorApiKey`** and paste your production API key.
+3. Change the **`viatorEnv`** secret from `sandbox` to `production`.
+
+All cron jobs and API wrappers fetch these values from the Secrets Manager, so they automatically start using the updated secrets once saved.
