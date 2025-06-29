@@ -1,7 +1,9 @@
 // src/backend/syncJobs.jsw
-// Versión con logging para monitorear la ejecución
+// Versión con logging y manejo de fecha de última sincronización
 import { schedule } from 'wix-cron';
 import wixData from 'wix-data';
+import { storage } from 'wix-storage'; // Importar storage para tener memoria
+
 import {
     getModifiedProducts,
     getBookingsStatus,
@@ -10,7 +12,7 @@ import {
 } from 'backend/viatorAPI.jsw';
 
 // Función helper para guardar datos en la colección correcta
-async function saveData(collectionId, items, primaryKey) {
+async function saveData(collectionId, items) {
     if (!Array.isArray(items) || items.length === 0) {
         console.log(`[Sync] No hay nuevos items para guardar en ${collectionId}.`);
         return { saved: 0, errors: 0 };
@@ -29,9 +31,36 @@ async function saveData(collectionId, items, primaryKey) {
 // Tarea para sincronizar productos cada 15 minutos
 export const syncProducts = schedule('*/15 * * * *', async () => {
     console.log("--- [Cron Job] Iniciando syncProducts ---");
+    const lastSyncKey = 'lastProductSyncTimestamp';
+
     try {
-        const products = await getModifiedProducts(); // Asumiendo que esto devuelve un array de productos
-        await saveData('ViatorProducts', products);
+        // 1. Obtener la fecha de la última sincronización exitosa desde la "memoria"
+        let lastSyncDate = await storage.getItem(lastSyncKey);
+        
+        if (!lastSyncDate) {
+            // 2. Si es la primera vez, usamos una fecha muy antigua para traer TODOS los productos
+            lastSyncDate = '2000-01-01T00:00:00Z';
+            console.log(`[Sync] Primera sincronización de productos. Usando fecha por defecto: ${lastSyncDate}`);
+        } else {
+            console.log(`[Sync] Sincronizando productos modificados desde: ${lastSyncDate}`);
+        }
+        
+        const syncStartTime = new Date(); // Guardamos la hora de inicio de este ciclo
+
+        // 3. Llamamos a la API con la fecha correcta
+        const products = await getModifiedProducts(lastSyncDate);
+
+        // 4. Guardamos los datos obtenidos
+        const result = await saveData('ViatorProducts', products);
+
+        // 5. Si todo salió bien, guardamos la nueva fecha de sincronización en la "memoria"
+        if (result.errors === 0) {
+            await storage.setItem(lastSyncKey, syncStartTime.toISOString());
+            console.log(`[Sync] Fecha de última sincronización actualizada a: ${syncStartTime.toISOString()}`);
+        } else {
+            console.error(`[Sync] No se actualizó la fecha de sincronización debido a ${result.errors} errores al guardar.`);
+        }
+
     } catch (error) {
         console.error("[Cron Job] Falló la sincronización de productos:", error);
     } finally {
@@ -43,6 +72,7 @@ export const syncProducts = schedule('*/15 * * * *', async () => {
 export const syncBookings = schedule('5 * * * *', async () => {
     console.log("--- [Cron Job] Iniciando syncBookings ---");
     try {
+        // NOTA: Esta función probablemente también necesitará un manejo de fecha de última sincronización.
         const bookings = await getBookingsStatus();
         await saveData('ViatorBookings', bookings);
     } catch (error) {
