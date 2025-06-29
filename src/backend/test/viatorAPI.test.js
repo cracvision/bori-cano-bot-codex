@@ -9,11 +9,11 @@ code = code.replace(/import\s+\{[^}]+\}\s+from\s+'wix-fetch';?\n/, '')
            .replace(/export\s+(async\s+function)/g, '$1')
            .replace(/export\s+function/g, 'function');
 code = `let fetch; let getSecret;\nfunction __setTestDependencies({ fetch: f, getSecret: gs } = {}) { if (f) fetch = f; if (gs) getSecret = gs; viatorApiKey = undefined; viatorEnv = undefined; }\n` + code;
-code += '\nmodule.exports = { __setTestDependencies, getViatorProductDetails, getModifiedProducts, getBookingsStatus, getExchangeRates, getBulkLocations };';
+code += '\nmodule.exports = { __setTestDependencies, getViatorProductDetails, getModifiedProducts, getBookingsStatus, getExchangeRates, getBulkLocations, createBooking };';
 const sandbox = { module: { exports: {} }, exports: {} };
 vm.createContext(sandbox);
 vm.runInContext(code, sandbox, { filename: 'viatorAPI.jsw' });
-const { __setTestDependencies, getViatorProductDetails, getModifiedProducts, getBookingsStatus, getExchangeRates, getBulkLocations } = sandbox.module.exports;
+const { __setTestDependencies, getViatorProductDetails, getModifiedProducts, getBookingsStatus, getExchangeRates, getBulkLocations, createBooking } = sandbox.module.exports;
 
 function createMocks() {
   const calls = [];
@@ -74,4 +74,14 @@ test('getViatorProductDetails posts to bulk endpoint', async () => {
   assert.strictEqual(options.headers['Accept'], 'application/json;version=2.0');
   assert.strictEqual(options.headers['Content-Type'], 'application/json');
   assert.strictEqual(JSON.parse(options.body).productCodes.length, 2);
+});
+
+test('createBooking posts to bookings/create', async () => {
+  const calls = createMocks();
+  await createBooking({ productCode: 'p1', travelDate: '2024-01-01' });
+  const { url, options } = calls[0];
+  assert.strictEqual(url, 'https://api.sandbox.viator.com/partner/v1/bookings/create');
+  assert.strictEqual(options.method, 'POST');
+  assert.strictEqual(options.headers['Content-Type'], 'application/json');
+  assert.strictEqual(JSON.parse(options.body).productCode, 'p1');
 });
