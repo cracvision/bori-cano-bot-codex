@@ -19,7 +19,11 @@ function createMocks() {
   const calls = [];
   const mockFetch = async (url, options = {}) => {
     calls.push({ url, options });
-    return { ok: true, json: async () => ({}) };
+    return {
+      ok: true,
+      json: async () => ({}),
+      text: async () => '{}' // used by viatorFetch in tests
+    };
   };
   const mockGetSecret = async (name) => {
     if (name === 'viatorApiKey') return 'KEY';
