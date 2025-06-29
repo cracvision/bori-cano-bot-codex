@@ -3,7 +3,7 @@
 // --- IMPORTACIONES (CORREGIDO) ---
 import { startAssistantRun, getAssistantRunResult } from 'backend/openaiHandler.jsw';
 import { enviarEmailAlHuesped, enviarEmail } from 'backend/email.jsw';
-import { generateAudio } from 'backend/ttsHandler';
+import { generateAudio } from 'backend/ttsHandler.jsw';
 
 // --- CONFIGURACIÓN DE TEMPORIZADORES ---
 const INACTIVITY_WARNING_DURATION = 2 * 60 * 1000;
