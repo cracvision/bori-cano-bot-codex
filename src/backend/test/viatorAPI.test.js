@@ -77,7 +77,7 @@ test('getViatorProductDetails posts to bulk endpoint', async () => {
   const calls = createMocks();
   await getViatorProductDetails(['p1', 'p2']);
   const { url, options } = calls[0];
-  assert.strictEqual(url, 'https://api.sandbox.viator.com/partner/v2/products/bulk');
+  assert.strictEqual(url, 'https://api.sandbox.viator.com/partner/products/bulk');
   assert.strictEqual(options.method, 'POST');
   assert.strictEqual(options.headers['exp-api-key'], 'KEY');
   assert.strictEqual(options.headers['Accept-Language'], 'es-PR');
