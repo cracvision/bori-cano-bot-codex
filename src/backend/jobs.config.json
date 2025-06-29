@@ -1,0 +1,36 @@
+{
+  "jobs": [
+    {
+      "functionLocation": "/backend/syncJobs.jsw",
+      "functionName": "syncProducts",
+      "description": "Syncs products from Viator every 15 minutes.",
+      "executionConfig": {
+        "cronExpression": "*/15 * * * *"
+      }
+    },
+    {
+      "functionLocation": "/backend/syncJobs.jsw",
+      "functionName": "syncBookings",
+      "description": "Syncs booking statuses from Viator every hour.",
+      "executionConfig": {
+        "cronExpression": "5 * * * *"
+      }
+    },
+    {
+      "functionLocation": "/backend/syncJobs.jsw",
+      "functionName": "syncRates",
+      "description": "Syncs exchange rates from Viator daily.",
+      "executionConfig": {
+        "cronExpression": "0 3 * * *"
+      }
+    },
+    {
+      "functionLocation": "/backend/syncJobs.jsw",
+      "functionName": "syncLocations",
+      "description": "Syncs locations from Viator monthly.",
+      "executionConfig": {
+        "cronExpression": "0 4 1 * *"
+      }
+    }
+  ]
+}
