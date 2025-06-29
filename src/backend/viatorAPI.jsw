@@ -1,5 +1,5 @@
 // src/backend/viatorAPI.jsw
-// VERSIÓN CORREGIDA: Apunta a los endpoints de API correctos.
+// VERSIÓN CORREGIDA: Apunta a los endpoints de API correctos y mejora el logging.
 
 import { fetch } from 'wix-fetch';
 import { getSecret } from 'wix-secrets-backend';
@@ -23,7 +23,7 @@ async function viatorFetch(path, options = {}) {
 
     const { headers = {}, ...rest } = options;
     const finalHeaders = {
-        'exp-api-key': viatorApiKey, // <--- CORREGIDO: Usa el header 'exp-api-key'
+        'exp-api-key': viatorApiKey, // Usa el header 'exp-api-key'
         'Accept-Language': 'es-PR',
         'Accept': 'application/json;version=2.0',
         'Content-Type': 'application/json',
@@ -31,7 +31,7 @@ async function viatorFetch(path, options = {}) {
     };
 
     const url = `${baseUrl}${path}`;
-    console.log(`[viatorAPI] Fetching URL: ${url}`); // <-- Log para depuración
+    console.log(`[viatorAPI] Fetching URL: ${url}`); // Log para depuración
 
     try {
         const response = await fetch(url, {
@@ -45,14 +45,17 @@ async function viatorFetch(path, options = {}) {
             throw new Error(`Viator API error ${response.status}`);
         }
 
-        return response.json();
+        // Para evitar errores en respuestas vacías (ej. un 204 No Content)
+        const responseText = await response.text();
+        return responseText ? JSON.parse(responseText) : {};
+
     } catch (error) {
         console.error(`[viatorAPI] Fallo en la llamada a fetch para ${url}:`, error);
         throw error;
     }
 }
 
-// --- FUNCIONES DE SINCRONIZACIÓN ---
+// --- FUNCIONES DE SINCRONIZACIÓN (Para los cron jobs) ---
 
 export async function getModifiedProducts(sinceIso) {
     // CORREGIDO: Endpoint correcto y parámetro de fecha correcto
@@ -76,7 +79,7 @@ export async function getBulkLocations() {
 }
 
 
-// --- FUNCIONES DE INTERACCIÓN EN TIEMPO REAL ---
+// --- FUNCIONES DE INTERACCIÓN EN TIEMPO REAL (Llamadas desde el frontend) ---
 
 export async function createBooking(bookingRequest) {
     // CORREGIDO: Endpoint correcto
@@ -86,7 +89,7 @@ export async function createBooking(bookingRequest) {
     });
 }
 
-// Esta función parece ser para obtener detalles de productos específicos, la mantenemos.
+// Esta función parece ser para obtener detalles de productos específicos
 export async function getViatorProductDetails(productCodesArray) {
     // CORREGIDO: Endpoint correcto para la v2
     return viatorFetch('/v2/products/bulk', {
@@ -94,4 +97,3 @@ export async function getViatorProductDetails(productCodesArray) {
         body: JSON.stringify({ productCodes: productCodesArray })
     });
 }
-
