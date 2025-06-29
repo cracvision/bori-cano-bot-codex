@@ -1,5 +1,7 @@
 import wixData from 'wix-data';
 import wixLocation from 'wix-location';
+import { createBooking } from 'backend/viatorAPI';
+import { wixWindow } from 'wix-window';
 
 let currentProductId;
 
@@ -38,19 +40,33 @@ async function loadProduct(id) {
 }
 
 async function handleBookNow() {
-  const booking = {
-    productCode: currentProductId,
-    createdAt: new Date()
+  const bookingRequest = {
+    productCode: currentProductId
   };
+  if ($w('#dateInput')) {
+    bookingRequest.travelDate = $w('#dateInput').value;
+  }
+  if ($w('#travelersInput')) {
+    bookingRequest.numberOfTravelers = Number($w('#travelersInput').value);
+  }
   try {
-    await wixData.insert('ViatorBookings', booking);
+    const res = await createBooking(bookingRequest);
+    const url = res?.iframeUrl || res?.payment?.iframeUrl || res?.paymentUrl;
+    if (url) {
+      if ($w('#paymentFrame')) {
+        $w('#paymentFrame').src = url;
+        $w('#paymentFrame').show();
+      } else {
+        wixWindow.openLightbox('PaymentIframe', { url });
+      }
+    }
     if ($w('#bookingStatus')) {
-      $w('#bookingStatus').text = 'Booking saved!';
+      $w('#bookingStatus').text = 'Booking created!';
     }
   } catch (err) {
     console.error('booking error', err);
     if ($w('#bookingStatus')) {
-      $w('#bookingStatus').text = 'Could not save booking';
+      $w('#bookingStatus').text = 'Could not create booking';
     }
   }
 }

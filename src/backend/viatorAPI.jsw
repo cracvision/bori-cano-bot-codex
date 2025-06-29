@@ -81,3 +81,11 @@ export async function getExchangeRates() {
 export async function getBulkLocations() {
   return viatorFetch('/locations/bulk');
 }
+
+export async function createBooking(bookingRequest) {
+  return viatorFetch('/v1/bookings/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(bookingRequest)
+  });
+}
