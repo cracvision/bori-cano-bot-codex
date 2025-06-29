@@ -58,23 +58,19 @@ async function viatorFetch(path, options = {}) {
 // --- FUNCIONES DE SINCRONIZACIÓN (Para los cron jobs) ---
 
 export async function getModifiedProducts(sinceIso) {
-    // CORREGIDO: Endpoint correcto y parámetro de fecha correcto
     return viatorFetch(`/products/modified-since?modifiedSince=${encodeURIComponent(sinceIso)}`);
 }
 
 export async function getBookingsStatus(sinceIso) {
-    // CORREGIDO: Endpoint correcto y parámetro de fecha correcto
     const query = sinceIso ? `?lastUpdated=${encodeURIComponent(sinceIso)}` : '';
     return viatorFetch(`/bookings/status${query}`);
 }
 
 export async function getExchangeRates() {
-    // CORREGIDO: Endpoint correcto
     return viatorFetch('/exchange-rates');
 }
 
 export async function getBulkLocations() {
-    // CORREGIDO: Endpoint correcto
     return viatorFetch('/locations/bulk');
 }
 
@@ -82,7 +78,6 @@ export async function getBulkLocations() {
 // --- FUNCIONES DE INTERACCIÓN EN TIEMPO REAL (Llamadas desde el frontend) ---
 
 export async function createBooking(bookingRequest) {
-    // CORREGIDO: Endpoint correcto
     return viatorFetch('/bookings/create', {
         method: 'POST',
         body: JSON.stringify(bookingRequest)
@@ -91,8 +86,8 @@ export async function createBooking(bookingRequest) {
 
 // Esta función parece ser para obtener detalles de productos específicos
 export async function getViatorProductDetails(productCodesArray) {
-    // CORREGIDO: Endpoint correcto para la v2
-    return viatorFetch('/v2/products/bulk', {
+    // CORREGIDO: Endpoint correcto, se eliminó el prefijo /v2
+    return viatorFetch('/products/bulk', {
         method: 'POST',
         body: JSON.stringify({ productCodes: productCodesArray })
     });
