@@ -35,9 +35,12 @@ test('getModifiedProducts uses correct endpoint and headers', async () => {
   await getModifiedProducts('2024-01-01T00:00:00Z');
   assert.strictEqual(calls.length, 1);
   const { url, options } = calls[0];
-  assert.strictEqual(url, 'https://api.sandbox.viator.com/partner/v1/products/modified?startDate=2024-01-01T00%3A00%3A00Z');
+  assert.strictEqual(
+    url,
+    'https://api.sandbox.viator.com/partner/products/modified-since?modifiedSince=2024-01-01T00%3A00%3A00Z'
+  );
   assert.strictEqual(options.headers['exp-api-key'], 'KEY');
-  assert.strictEqual(options.headers['Accept-Language'], 'es-ES');
+  assert.strictEqual(options.headers['Accept-Language'], 'es-PR');
   assert.strictEqual(options.headers['Accept'], 'application/json;version=2.0');
 });
 
@@ -45,7 +48,10 @@ test('getBookingsStatus uses correct endpoint and headers', async () => {
   const calls = createMocks();
   await getBookingsStatus('2024-01-02T00:00:00Z');
   const { url, options } = calls[0];
-  assert.strictEqual(url, 'https://api.sandbox.viator.com/partner/v1/bookings/status?startDate=2024-01-02T00%3A00%3A00Z');
+  assert.strictEqual(
+    url,
+    'https://api.sandbox.viator.com/partner/bookings/status?lastUpdated=2024-01-02T00%3A00%3A00Z'
+  );
   assert.strictEqual(options.headers['exp-api-key'], 'KEY');
 });
 
@@ -53,7 +59,7 @@ test('getExchangeRates uses correct endpoint', async () => {
   const calls = createMocks();
   await getExchangeRates();
   const { url } = calls[0];
-  assert.strictEqual(url, 'https://api.sandbox.viator.com/partner/v1/exchange-rates');
+  assert.strictEqual(url, 'https://api.sandbox.viator.com/partner/exchange-rates');
 });
 
 test('getBulkLocations uses correct endpoint', async () => {
@@ -67,10 +73,10 @@ test('getViatorProductDetails posts to bulk endpoint', async () => {
   const calls = createMocks();
   await getViatorProductDetails(['p1', 'p2']);
   const { url, options } = calls[0];
-  assert.strictEqual(url, 'https://api.viator.com/partner/v2/products/bulk');
+  assert.strictEqual(url, 'https://api.sandbox.viator.com/partner/v2/products/bulk');
   assert.strictEqual(options.method, 'POST');
-  assert.strictEqual(options.headers['API-key'], 'KEY');
-  assert.strictEqual(options.headers['Accept-Language'], 'es-ES');
+  assert.strictEqual(options.headers['exp-api-key'], 'KEY');
+  assert.strictEqual(options.headers['Accept-Language'], 'es-PR');
   assert.strictEqual(options.headers['Accept'], 'application/json;version=2.0');
   assert.strictEqual(options.headers['Content-Type'], 'application/json');
   assert.strictEqual(JSON.parse(options.body).productCodes.length, 2);
@@ -80,7 +86,7 @@ test('createBooking posts to bookings/create', async () => {
   const calls = createMocks();
   await createBooking({ productCode: 'p1', travelDate: '2024-01-01' });
   const { url, options } = calls[0];
-  assert.strictEqual(url, 'https://api.sandbox.viator.com/partner/v1/bookings/create');
+  assert.strictEqual(url, 'https://api.sandbox.viator.com/partner/bookings/create');
   assert.strictEqual(options.method, 'POST');
   assert.strictEqual(options.headers['Content-Type'], 'application/json');
   assert.strictEqual(JSON.parse(options.body).productCode, 'p1');
