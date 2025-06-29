@@ -1,36 +1,79 @@
-// syncJobs.jsw - 2025-06-23
-import { withWixCron } from 'wix-cron';
+// src/backend/syncJobs.jsw
+// Versión con logging para monitorear la ejecución
+import { schedule } from 'wix-cron';
 import wixData from 'wix-data';
 import {
     getModifiedProducts,
     getBookingsStatus,
     getExchangeRates,
-    getBulkLocations
+    getBulkLocations,
 } from 'backend/viatorAPI.jsw';
 
-async function saveAll(collectionName, items) {
+// Función helper para guardar datos en la colección correcta
+async function saveData(collectionId, items, primaryKey) {
     if (!Array.isArray(items) || items.length === 0) {
-        return;
+        console.log(`[Sync] No hay nuevos items para guardar en ${collectionId}.`);
+        return { saved: 0, errors: 0 };
     }
-    await wixData.bulkSave(collectionName, items);
+
+    try {
+        const result = await wixData.bulkSave(collectionId, items, { suppressHooks: true });
+        console.log(`[Sync] Se guardaron ${result.insertedItemIds.length} nuevos items y se actualizaron ${result.updatedItemIds.length} en ${collectionId}.`);
+        return { saved: result.insertedItemIds.length + result.updatedItemIds.length, errors: result.errors.length };
+    } catch (error) {
+        console.error(`[Sync] Error al guardar datos en ${collectionId}:`, error);
+        return { saved: 0, errors: items.length };
+    }
 }
 
-export const syncProducts = withWixCron('*/15 * * * *', async () => {
-    const products = await getModifiedProducts();
-    await saveAll('Products', products);
+// Tarea para sincronizar productos cada 15 minutos
+export const syncProducts = schedule('*/15 * * * *', async () => {
+    console.log("--- [Cron Job] Iniciando syncProducts ---");
+    try {
+        const products = await getModifiedProducts(); // Asumiendo que esto devuelve un array de productos
+        await saveData('ViatorProducts', products);
+    } catch (error) {
+        console.error("[Cron Job] Falló la sincronización de productos:", error);
+    } finally {
+        console.log("--- [Cron Job] Finalizando syncProducts ---");
+    }
 });
 
-export const syncBookings = withWixCron('5 * * * *', async () => {
-    const bookings = await getBookingsStatus();
-    await saveAll('Bookings', bookings);
+// Tarea para sincronizar reservas cada hora
+export const syncBookings = schedule('5 * * * *', async () => {
+    console.log("--- [Cron Job] Iniciando syncBookings ---");
+    try {
+        const bookings = await getBookingsStatus();
+        await saveData('ViatorBookings', bookings);
+    } catch (error) {
+        console.error("[Cron Job] Falló la sincronización de reservas:", error);
+    } finally {
+        console.log("--- [Cron Job] Finalizando syncBookings ---");
+    }
 });
 
-export const syncRates = withWixCron('0 0 * * *', async () => {
-    const rates = await getExchangeRates();
-    await saveAll('ExchangeRates', rates);
+// Tarea para sincronizar tipos de cambio diariamente
+export const syncRates = schedule('0 3 * * *', async () => {
+    console.log("--- [Cron Job] Iniciando syncRates ---");
+    try {
+        const rates = await getExchangeRates();
+        await saveData('ViatorExchangeRates', rates);
+    } catch (error) {
+        console.error("[Cron Job] Falló la sincronización de tipos de cambio:", error);
+    } finally {
+        console.log("--- [Cron Job] Finalizando syncRates ---");
+    }
 });
 
-export const syncLocations = withWixCron('0 0 1 * *', async () => {
-    const locations = await getBulkLocations();
-    await saveAll('Locations', locations);
+// Tarea para sincronizar ubicaciones mensualmente
+export const syncLocations = schedule('0 4 1 * *', async () => {
+    console.log("--- [Cron Job] Iniciando syncLocations ---");
+    try {
+        const locations = await getBulkLocations();
+        await saveData('ViatorLocations', locations);
+    } catch (error) {
+        console.error("[Cron Job] Falló la sincronización de ubicaciones:", error);
+    } finally {
+        console.log("--- [Cron Job] Finalizando syncLocations ---");
+    }
 });
