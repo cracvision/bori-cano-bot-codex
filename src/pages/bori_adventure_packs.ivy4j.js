@@ -1,65 +1,31 @@
-import wixData from 'wix-data';
-
 $w.onReady(function () {
-  // 1. Configura el repetidor para que sepa qué hacer con cada item
-  $w('#productRepeater').onItemReady(($item, itemData, index) => {
-    // 2. Asigna los datos a los elementos correspondientes usando sus IDs
-    $item('#productTitle').text = itemData.title;
+    /**
+     * Configura el manejador de eventos para el repetidor #repeater1.
+     * Esta función se ejecuta una vez por cada item que el dataset carga en el repetidor.
+     * $item es una función de selección que se refiere a los elementos dentro del item actual del repetidor.
+     * itemData contiene los datos de la fila de la colección para ese item específico.
+     */
+    $w('#repeater1').onItemReady(($item, itemData, index) => {
 
-    // Formateamos el precio para que se vea bien
-    if (itemData.priceFrom) {
-      $item('#productPrice').text = `$${itemData.priceFrom}`;
-    } else {
-      $item('#productPrice').text = 'Precio no disponible';
-    }
+        // Conecta los elementos internos del repetidor con los datos del producto.
 
-    // Asigna la URL de la imagen al elemento de imagen
-    if (itemData.productImage) {
-      $item('#productImage').src = itemData.productImage;
-    }
-  });
+        // 1. Asigna la URL de la imagen del producto al elemento de imagen #imageX16.
+        //    Asegúrate de que 'mainImage' sea la clave de campo (Field Key) correcta para la imagen en tu colección.
+        if(itemData.mainImage) {
+            $item('#imageX16').src = itemData.mainImage;
+        }
 
-  // 3. Finalmente, consulta la base de datos y le pasa los datos al repetidor
-  wixData
-    .query('ViatorProducts')
-    .limit(100) // Traemos hasta 100 productos
-    .find()
-    .then((results) => {
-      if (results.items.length > 0) {
-        $w('#productRepeater').data = results.items;
-      } else {
-        console.log(
-          'No se encontraron productos en la colección ViatorProducts.'
-        );
-      }
-    })
-    .catch((error) => {
-      console.error(
-        'Error al consultar la colección ViatorProducts:',
-        error
-      );
+        // 2. Asigna el título del producto al elemento de texto #text5.
+        //    Asegúrate de que 'title' sea la clave de campo correcta para el título.
+        if(itemData.title) {
+            $item('#text5').text = itemData.title;
+        }
+
+        // 3. Asigna el precio al elemento de texto #text6.
+        //    Asegúrate de que 'price' sea la clave de campo correcta para el precio.
+        //    Se añade el símbolo '$' para el formato.
+        if(itemData.price !== undefined) {
+            $item('#text6').text = `$${itemData.price}`;
+        }
     });
-
-  // ------------ Galería Pro conectada al dataset ------------
-  const dataset = $w('#dataset1');
-
-  dataset.onReady(async () => {
-    console.log('Dataset está listo. Obteniendo items...');
-
-    const productItems = await dataset.getItems(0, dataset.getTotalCount());
-
-    console.log(`Se encontraron ${productItems.items.length} productos.`);
-
-    const galleryItems = productItems.items.map((product) => {
-      return {
-        src: product.mainImage,
-        title: product.title,
-        description: product.shortDescription,
-        link: product['link-vistapelicano-com-bori-shop-title'],
-      };
-    });
-
-    $w('#gallery1').items = galleryItems;
-    console.log('Items asignados a la galería.');
-  });
 });
