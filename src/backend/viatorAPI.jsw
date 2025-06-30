@@ -1,5 +1,5 @@
 // src/backend/viatorAPI.jsw
-// VERSIÓN CORREGIDA: Apunta a los endpoints de API correctos y mejora el logging.
+// VERSIÓN CORREGIDA FINAL: Añade validación para prevenir llamadas con arrays vacíos.
 
 import { fetch } from 'wix-fetch';
 import { getSecret } from 'wix-secrets-backend';
@@ -45,7 +45,6 @@ async function viatorFetch(path, options = {}) {
             throw new Error(`Viator API error ${response.status}`);
         }
 
-        // Para evitar errores en respuestas vacías (ej. un 204 No Content)
         const responseText = await response.text();
         return responseText ? JSON.parse(responseText) : {};
 
@@ -86,7 +85,12 @@ export async function createBooking(bookingRequest) {
 
 // Esta función parece ser para obtener detalles de productos específicos
 export async function getViatorProductDetails(productCodesArray) {
-    // CORREGIDO: Endpoint correcto, se eliminó el prefijo /v2
+    // NUEVO: Añadido para prevenir llamadas con arrays vacíos
+    if (!productCodesArray || productCodesArray.length === 0) {
+        console.log('[viatorAPI] Se recibió un array de productCodes vacío. Saltando la llamada a la API.');
+        return []; // Devuelve un array vacío para que el frontend no se rompa.
+    }
+
     return viatorFetch('/products/bulk', {
         method: 'POST',
         body: JSON.stringify({ productCodes: productCodesArray })
