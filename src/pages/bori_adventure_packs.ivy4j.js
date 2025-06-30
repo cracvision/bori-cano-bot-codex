@@ -39,4 +39,27 @@ $w.onReady(function () {
         error
       );
     });
+
+  // ------------ Galería Pro conectada al dataset ------------
+  const dataset = $w('#dataset1');
+
+  dataset.onReady(async () => {
+    console.log('Dataset está listo. Obteniendo items...');
+
+    const productItems = await dataset.getItems(0, dataset.getTotalCount());
+
+    console.log(`Se encontraron ${productItems.items.length} productos.`);
+
+    const galleryItems = productItems.items.map((product) => {
+      return {
+        src: product.mainImage,
+        title: product.title,
+        description: product.shortDescription,
+        link: product['link-vistapelicano-com-bori-shop-title'],
+      };
+    });
+
+    $w('#gallery1').items = galleryItems;
+    console.log('Items asignados a la galería.');
+  });
 });
