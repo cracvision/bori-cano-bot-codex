@@ -10,13 +10,13 @@ import {
 } from 'backend/viatorAPI.jsw';
 
 // Función helper para guardar datos
-async function saveData(collectionId, items) {
+async function saveData(collectionId, items, options = {}) {
     if (!Array.isArray(items) || items.length === 0) {
         console.log(`[Sync] No hay nuevos items para guardar en ${collectionId}.`);
         return { saved: 0, errors: 0 };
     }
     try {
-        const result = await wixData.bulkSave(collectionId, items, { suppressHooks: true });
+        const result = await wixData.bulkSave(collectionId, items, { suppressHooks: true, ...options });
         console.log(`[Sync] Se guardaron ${result.insertedItemIds.length} items y se actualizaron ${result.updatedItemIds.length} en ${collectionId}.`);
         return { saved: result.insertedItemIds.length + result.updatedItemIds.length, errors: result.errors.length };
     } catch (error) {
@@ -28,6 +28,9 @@ async function saveData(collectionId, items) {
 // Las funciones ahora se exportan directamente. La programación se define en jobs.config.json.
 export async function syncProducts() {
     console.log("--- [Cron Job] Iniciando syncProducts ---");
+    const options = {
+        suppressAuth: true
+    };
     const lastSyncKey = 'lastProductSyncTimestamp';
     try {
         let lastSyncDate = await storage.getItem(lastSyncKey);
@@ -39,7 +42,7 @@ export async function syncProducts() {
         }
         const syncStartTime = new Date();
         const products = await getModifiedProducts(lastSyncDate);
-        const result = await saveData('ViatorProducts', products);
+        const result = await saveData('ViatorProducts', products, options);
         if (result.errors === 0 && products.length > 0) { // Solo actualiza si hubo productos y no hubo errores
             await storage.setItem(lastSyncKey, syncStartTime.toISOString());
             console.log(`[Sync] Fecha de última sincronización actualizada a: ${syncStartTime.toISOString()}`);
