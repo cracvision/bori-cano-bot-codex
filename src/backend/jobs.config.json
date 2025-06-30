@@ -1,0 +1,36 @@
+{
+  "jobs": [
+    {
+      "functionLocation": "/backend/syncJobs.jsw",
+      "functionName": "syncProducts",
+      "description": "Sincroniza los productos de Viator cada 15 minutos.",
+      "executionConfig": {
+        "cronExpression": "*/15 * * * *"
+      }
+    },
+    {
+      "functionLocation": "/backend/syncJobs.jsw",
+      "functionName": "syncBookings",
+      "description": "Sincroniza el estado de las reservas de Viator cada hora.",
+      "executionConfig": {
+        "cronExpression": "5 * * * *"
+      }
+    },
+    {
+      "functionLocation": "/backend/syncJobs.jsw",
+      "functionName": "syncRates",
+      "description": "Sincroniza los tipos de cambio de Viator diariamente.",
+      "executionConfig": {
+        "cronExpression": "0 3 * * *"
+      }
+    },
+    {
+      "functionLocation": "/backend/syncJobs.jsw",
+      "functionName": "syncLocations",
+      "description": "Sincroniza las ubicaciones de Viator mensualmente.",
+      "executionConfig": {
+        "cronExpression": "0 4 1 * *"
+      }
+    }
+  ]
+}
