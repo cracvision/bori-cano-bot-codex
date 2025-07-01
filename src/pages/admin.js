@@ -2,20 +2,21 @@
 import { forceProductSync } from 'backend/manualTriggers.jsw';
 
 $w.onReady(function () {
-    // Configura el evento onClick para el botón #syncButton.
+    // Configura lo que sucede cuando se hace clic en el botón #syncButton.
     $w('#syncButton').onClick(async () => {
-        // Da feedback visual al usuario.
+
+        // 1. Da feedback visual al usuario: deshabilita el botón y cambia el texto.
         $w('#syncButton').disable();
         $w('#syncButton').label = 'Sincronizando...';
 
         console.log('Iniciando sincronización manual desde el botón de admin...');
 
-        // Llama a la función del backend.
-        await forceProductSync();
+        // 2. Llama a la función del backend y espera a que termine.
+        const result = await forceProductSync();
 
-        console.log('Sincronización manual completada.');
+        console.log('Sincronización manual completada. Resultado:', result);
 
-        // Vuelve a habilitar el botón.
+        // 3. Vuelve a habilitar el botón y restaura el texto original.
         $w('#syncButton').label = 'Sincronizar Productos';
         $w('#syncButton').enable();
     });
